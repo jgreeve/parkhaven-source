@@ -1,0 +1,9 @@
+{
+  "endpoints": [
+    {
+      "origin": "https://ai.internal.example",
+      "ca_file": "certificates/ai.internal.example.pem",
+      "certificate_sha256": "replace-with-64-lowercase-hex-characters"
+    }
+  ]
+}

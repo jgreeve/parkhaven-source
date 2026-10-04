@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "context_id": "parkhaven-pdok-aerial-2025-v1",
+  "kind": "visual_aerial",
+  "image_filename": "parkhaven-aerial-2025.jpg",
+  "image_sha256": "19d6cae4d9c777ed2090dabe0f6614a8d8214e4eebfb048266d89a49f297ef68",
+  "image_width": 2500,
+  "image_height": 2500,
+  "source": {
+    "title": "Luchtfoto 2025 Ortho 5 en 8cm RGB",
+    "provider": "Landelijke Voorziening Beeldmateriaal via PDOK",
+    "service_url": "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0",
+    "layer": "2025_orthoHR",
+    "licence": "CC-BY",
+    "attribution": "Bron: Beeldmateriaal Nederland, via PDOK"
+  },
+  "crs": "EPSG:28992",
+  "rd_bbox": [91340.0, 435170.0, 91940.0, 435770.0],
+  "local_corners_m": {
+    "south_west": [-286.372192095, -307.705576403, -0.15],
+    "south_east": [304.740712832, -289.800904818, -0.15],
+    "north_west": [-304.276863679, 283.407328525, -0.15],
+    "north_east": [286.836041248, 301.312000109, -0.15]
+  },
+  "alignment": {
+    "status": "provisional",
+    "method": "building-aligned RD New fit",
+    "local_origin_rd": [91639.863, 435473.249],
+    "local_y_grid_north_offset_degrees": 1.735,
+    "notice": "Visuele context; geen landmeetkundige, juridische plot-, noord- of maaiveldreferentie."
+  }
+}

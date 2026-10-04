@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ParkHaven</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="importmap">{"imports":{"three":"/viewer-assets/three.module.min.js"}}</script>
+  <script src="/app.js" defer></script>
+  <script src="/viewer.js" type="module"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">PARKHAVEN <span>STUDIO</span></a>
+    <p id="connection" role="status">LOKALE APP</p>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">ONTWERPOMGEVING / V0.1</p>
+        <h1>Van Rhino-model<br>naar onderbouwd ontwerp.</h1>
+      </div>
+      <p class="intro">Maak een afgeschermd project voor uw ontwerp. Het bronbestand
+        blijft onaangetast; positionering, reparaties en analyses gebeuren later in
+        een controleerbare werkkopie.</p>
+    </section>
+
+    <section class="workspace" aria-labelledby="new-project-title">
+      <div class="step"><span>01</span><p>Importeren</p></div>
+      <div class="step muted"><span>02</span><p>Positioneren</p></div>
+      <div class="step muted"><span>03</span><p>Analyseren</p></div>
+      <div class="step muted"><span>04</span><p>Rapporteren</p></div>
+    </section>
+
+    <section class="panel create-panel">
+      <div>
+        <p class="eyebrow">NIEUW PROJECT</p>
+        <h2 id="new-project-title">Importeer een Rhino-ontwerp</h2>
+        <p id="import-help">Voer het lokale pad naar uw Rhino-bestand in. In de
+          Windows-app kunt u ook een bestand kiezen met Bladeren.</p>
+      </div>
+      <form id="project-form">
+        <label>Projectnaam <input id="project-name" name="name" maxlength="120" placeholder="Bijvoorbeeld Parkhaven variant A"></label>
+        <label>Pad naar `.3dm` <input id="design-path" name="design_path" required placeholder="C:\Ontwerpen\variant-a.3dm"></label>
+        <button id="browse-design" class="secondary" type="button" hidden>Bladeren...</button>
+        <button type="submit">Project aanmaken <span aria-hidden="true">-></span></button>
+        <p id="form-status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="projects" aria-labelledby="projects-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">WERKRUIMTE</p><h2 id="projects-title">Projecten</h2></div>
+        <button id="refresh" class="secondary" type="button">Vernieuwen</button>
+      </div>
+      <div id="project-list" class="project-list" aria-live="polite"></div>
+    </section>
+
+    <section id="workflow" class="workflow" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">ACTIEF PROJECT</p><h2 id="active-project-name">Project</h2></div>
+        <button id="close-project" class="secondary" type="button">Sluiten</button>
+      </div>
+      <div class="workflow-grid">
+        <article id="model-viewer" class="panel workflow-card viewer-card" aria-labelledby="viewer-title" data-state="empty">
+          <div class="viewer-toolbar">
+            <div><p id="viewer-kind" class="eyebrow">3D / PLAATSINGSPREVIEW</p><h3 id="viewer-title">Ontwerp en referentiecontext</h3></div>
+            <div class="viewer-actions" aria-label="3D camera">
+              <button id="view-fit-design" class="secondary" type="button" disabled>Ontwerp</button>
+              <button id="view-fit-all" class="secondary" type="button" disabled>Alles</button>
+              <button id="view-reset" class="secondary" type="button" disabled>Reset</button>
+              <button id="view-top" class="secondary" type="button" disabled>Boven</button>
+              <button id="view-front" class="secondary" type="button" disabled>Voor</button>
+              <button id="view-side" class="secondary" type="button" disabled>Zij</button>
+            </div>
+          </div>
+          <div class="viewer-modes" aria-label="3D-bron">
+            <button id="show-preview" class="secondary" type="button">Plaatsingspreview</button>
+            <button id="show-analysis" class="secondary" type="button">Laatste analyse</button>
+          </div>
+          <div class="gizmo-controls" aria-label="Plaatsingsgereedschap">
+            <button id="gizmo-move" class="secondary" type="button" aria-pressed="true">Verplaats XY</button>
+            <button id="gizmo-rotate" class="secondary" type="button" aria-pressed="false">Roteer Z</button>
+            <label>Referentiepunt
+              <select id="gizmo-reference">
+                <option value="origin">Modelnulpunt</option>
+                <option value="center">Ontwerpcentrum</option>
+              </select>
+            </label>
+            <button id="gizmo-snap-origin" class="secondary" type="button">Referentie naar (0,0)</button>
+            <button id="gizmo-reset" class="secondary" type="button">Herstel opgeslagen</button>
+          </div>
+          <p id="gizmo-status" class="small-note">Alleen beschikbaar in een voltooide plaatsingspreview. Wereld (0,0) is geen geverifieerd plotpunt.</p>
+          <div class="viewer-layers" aria-label="Zichtbare modellagen">
+            <label><input type="checkbox" data-viewer-layer="PH_DESIGN" checked><span class="viewer-swatch design"></span>Ontwerp</label>
+            <label><input type="checkbox" data-viewer-layer="PH_VISUAL_ONLY" checked><span class="viewer-swatch visual"></span>Alleen visueel</label>
+            <label><input type="checkbox" data-viewer-layer="PH_FACADES" checked><span class="viewer-swatch facades"></span>Gevels</label>
+            <label><input type="checkbox" data-viewer-layer="PH_TARGET" checked><span class="viewer-swatch target"></span>Parkdoel</label>
+            <label><input type="checkbox" data-viewer-layer="REFERENCE_CONTEXT" checked><span class="viewer-swatch context"></span>Context</label>
+            <label><input id="aerial-visible" type="checkbox" checked disabled><span class="viewer-swatch aerial"></span>PDOK-luchtfoto</label>
+            <label class="aerial-opacity">Dekking <input id="aerial-opacity" type="range" min="0.2" max="1" step="0.1" value="0.8" disabled></label>
+          </div>
+          <div class="viewer-frame">
+            <div id="viewer-canvas" tabindex="0" aria-label="3D-model: sleep om te draaien, rechtermuisknop om te schuiven en scroll om te zoomen"></div>
+            <div class="viewer-axis" aria-hidden="true"><span class="axis-z">Z</span><span class="axis-y">Y</span><span class="axis-x">X</span></div>
+          </div>
+          <p id="viewer-status" role="status">Selecteer een project.</p>
+          <p class="viewer-help">Slepen: draaien · Rechtermuisknop: schuiven · Scrollen: zoomen · Z is omhoog · Raster in meters</p>
+          <p id="viewer-meta" class="small-note">Alleen bekijken. Camerabeweging wijzigt de opgeslagen plaatsing of berekening niet.</p>
+          <p id="viewer-orientation" class="small-note">Geografisch noorden en een juridische plotgrens zijn nog niet geverifieerd.</p>
+          <p id="aerial-status" class="small-note" role="status">Lokale luchtfotocontext laden...</p>
+          <section id="spatial-checks" class="spatial-checks" aria-labelledby="spatial-checks-title" data-state="unavailable">
+            <h4 id="spatial-checks-title">Deterministische plaatsingscontrole</h4>
+            <p class="small-note">Gebaseerd op scenegeometrie in meters. Wereld Z=0 en referentie-extents zijn geen geverifieerd maaiveld of juridische plot.</p>
+            <dl>
+              <div><dt>Ontwerp-extents</dt><dd id="check-extents">Niet beschikbaar</dd></div>
+              <div><dt>Schaal</dt><dd id="check-scale">Niet beschikbaar</dd></div>
+              <div><dt>Wereld Z=0</dt><dd id="check-world-z">Niet beschikbaar</dd></div>
+              <div><dt>Referentie-envelope</dt><dd id="check-reference">Niet beschikbaar</dd></div>
+              <div><dt>Provenance</dt><dd id="check-provenance">Niet beschikbaar</dd></div>
+            </dl>
+          </section>
+        </article>
+        <article class="panel workflow-card">
+          <p class="eyebrow">02 / POSITIONEREN</p>
+          <h3>Plaatsing op Parkhaven</h3>
+          <p>Leg de horizontale verschuiving en rotatie vast. Een goedgekeurde plaatsing is verplicht voor analyse.</p>
+          <form id="placement-form" class="compact-form">
+            <div class="field-row">
+              <label>X (m)<input id="place-x" type="number" step="0.1" required></label>
+              <label>Y (m)<input id="place-y" type="number" step="0.1" required></label>
+              <label>Z (m)<input id="place-z" type="number" step="0.1" required></label>
+              <label>Rotatie (graden)<input id="place-rotation" type="number" step="0.1" required></label>
+            </div>
+            <label>Modeleenheid (betekenis van 1 coördinaat)
+              <select id="place-model-units" aria-describedby="model-units-help">
+                <option value="file">Bestandseenheid gebruiken</option>
+                <option value="meters">Meters — 1 = 1 m</option>
+                <option value="millimeters">Millimeters — 1 = 1 mm</option>
+                <option value="centimeters">Centimeters — 1 = 1 cm</option>
+              </select>
+            </label>
+            <p id="model-units-help" class="small-note">Staat een gebouw van 21 meter als hoogte 21 in een millimeterbestand? Kies dan Meters.
+              Alleen de analysekopie wordt geschaald; het bronbestand blijft intact. X/Y/Z blijven in meters.</p>
+            <label class="approval"><input id="place-approved" type="checkbox"> Ik keur deze plaatsing en modeleenheid goed voor analyse</label>
+            <button type="submit">Plaatsing opslaan</button>
+            <p id="placement-status" role="status"></p>
+          </form>
+          <div class="preview-actions">
+            <button id="start-preview" type="button">3D-preview maken</button>
+            <button id="cancel-preview" class="secondary" type="button" disabled>Preview annuleren</button>
+          </div>
+          <p id="preview-status" class="small-note" role="status">Maak na het opslaan een preview zonder Grasshopper-berekening.</p>
+        </article>
+
+        <article class="panel workflow-card">
+          <p class="eyebrow">03 / ANALYSEREN</p>
+          <h3>Rhino + Grasshopper</h3>
+          <p>Start een geisoleerde run. Rhino opent zichtbaar, bereidt de analyselagen in het geheugen voor en schrijft resultaten in dit project.</p>
+          <button id="start-analysis" type="button">Analyse starten</button>
+          <button id="cancel-analysis" type="button" disabled>Analyse annuleren</button>
+           <p id="analysis-status" role="status">Nog geen analyse gestart.</p>
+           <p id="analysis-units" class="small-note"></p>
+           <p id="analysis-warnings" class="small-note"></p>
+          <div id="metrics" class="mini-metrics" hidden>
+            <p>BVO <strong id="metric-bvo">-</strong></p><p>Zicht <strong id="metric-sight">-</strong></p><p>Kosten <strong id="metric-cost">-</strong></p>
+          </div>
+          <p id="metrics-provenance" class="small-note"></p>
+          <button id="capture-views" class="secondary" type="button" disabled>Vier modelbeelden vastleggen</button>
+          <p id="capture-status" class="small-note" role="status">Selecteer Laatste analyse na een voltooide run.</p>
+        </article>
+
+        <article class="panel workflow-card">
+          <p class="eyebrow">04 / AI-ADVIES</p>
+          <h3>Ontwerpadvies</h3>
+          <form id="ai-form" class="compact-form">
+            <label>OpenAI-compatible endpoint<input id="ai-endpoint" value="https://api.openai.com/v1"></label>
+            <label>Model<input id="ai-model" placeholder="Bijvoorbeeld gpt-4.1-mini"></label>
+            <label>API-key<input id="ai-key" type="password" autocomplete="off"></label>
+            <label>Ontwerpdoel<textarea id="design-goal" rows="3" placeholder="Beschrijf prioriteiten en gewenste verbetering"></textarea></label>
+            <button type="submit" disabled>Vraag advies</button>
+            <p id="ai-status" role="status">Beschikbaar na een voltooide analyse.</p>
+          </form>
+        </article>
+
+        <article class="panel workflow-card">
+          <p class="eyebrow">05 / RAPPORT</p>
+          <h3>Rapport opslaan</h3>
+          <p>Open het Nederlandse rapport en gebruik de afdrukdialoog om het als PDF op te slaan.</p>
+          <a id="report-link" class="button-link disabled" href="#" target="_blank" aria-disabled="true">Rapport openen</a>
+          <p class="small-note">Het rapport toont alleen werkelijk beschikbare resultaten en labelt AI-inferentie afzonderlijk.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+  <footer><span>Parkhaven, Rotterdam</span><span>Rhino 8 vereist voor analyse</span></footer>
+</body>
+</html>
