@@ -79,6 +79,12 @@ def main():
             report["checks"][key] = True
         actual_scene = json.loads((Path(job["data_dir"]) / "scene.json").read_text(encoding="utf-8-sig"))
         baseline_scene = json.loads((analyzer / "data/scene.json").read_text(encoding="utf-8-sig"))
+        design_layer = next(layer for layer in actual_scene["layers"] if layer["name"] == "PH_DESIGN")
+        color_values = design_layer.get("vertex_colors", [])
+        assert actual_scene.get("design_render_style") == "volume-colors-v1"
+        assert len(color_values) == len(design_layer["vertices"])
+        assert len({tuple(color_values[index:index + 3]) for index in range(0, len(color_values), 3)}) >= 3
+        report["checks"]["stable_volume_colors"] = True
         actual, baseline = scene_summary(actual_scene), scene_summary(baseline_scene)
         report["scene"] = actual
         assert actual.keys() == baseline.keys()

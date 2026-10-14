@@ -26,6 +26,8 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_BYTES = 16 * 1024 * 1024
 MAX_RUN_JSON_BYTES = 20 * 1024 * 1024
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+VOLUME_RGB = {(47, 128, 237), (242, 153, 74), (155, 81, 224), (39, 174, 96),
+              (235, 87, 87), (86, 204, 242), (242, 201, 76), (111, 207, 151), (215, 163, 93)}
 
 
 def _vector(value: Any, field: str) -> list[float]:
@@ -85,6 +87,8 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
     weather_path = data_dir.parent / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw"
     if job.get("job_type", "analysis") != "analysis" or job.get("status") != "completed":
         raise ProjectError("Modelbeelden zijn alleen beschikbaar voor een voltooide analyse.")
+    if payload.get("render_style") != "volume-colors-v1":
+        raise ProjectError("Modelbeelden missen de vereiste gekleurde volumeweergave.")
     if not scene_path.is_file() or not summary_path.is_file() or not results_path.is_file() or not weather_path.is_file():
         raise ProjectError("Scene, geometriesamenvatting en metrics moeten uit dezelfde voltooide run beschikbaar zijn.")
     if (scene_path.stat().st_size > MAX_RUN_JSON_BYTES or summary_path.stat().st_size > MAX_RUN_JSON_BYTES
@@ -112,6 +116,19 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ProjectError("De runscene of geometriesamenvatting kan niet worden gevalideerd.") from exc
+    if not isinstance(scene, dict):
+        raise ProjectError("De runscene heeft geen geldig JSON-object.")
+    design_layers = [layer for layer in scene.get("layers", [])
+                     if isinstance(layer, dict) and layer.get("name") == "PH_DESIGN"]
+    if scene.get("design_render_style") != payload["render_style"] or len(design_layers) != 1:
+        raise ProjectError("De runscene bewijst de vereiste gekleurde volumeweergave niet.")
+    design = design_layers[0]
+    vertices, vertex_colors = design.get("vertices"), design.get("vertex_colors")
+    if (not isinstance(vertices, list) or not vertices or not isinstance(vertex_colors, list)
+            or len(vertex_colors) != len(vertices) or len(vertex_colors) % 3
+            or any(not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 255 for value in vertex_colors)
+            or any(tuple(vertex_colors[index:index + 3]) not in VOLUME_RGB for index in range(0, len(vertex_colors), 3))):
+        raise ProjectError("PH_DESIGN bevat geen volledige, geldige volumekleuren.")
     expected_summary = {
         "project_id": job["project_id"], "run_id": job["run_id"],
         "source_sha256": job["source_sha256"], "input_sha256": job["input_sha256"],
@@ -123,6 +140,7 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
         layer["name"] for layer in scene.get("layers", [])
         if isinstance(layer, dict) and isinstance(layer.get("vertices"), list) and layer["vertices"]
         and isinstance(layer.get("triangles"), list) and layer["triangles"]
+        and not str(layer.get("name", "")).startswith("ANALYSIS_")
     )
     expected_layers.append("PDOK_AERIAL")
     expected_layers.sort()
@@ -185,6 +203,7 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
             "run_id": job["run_id"],
             "units": "meters",
             "up_axis": "Z",
+            "render_style": payload["render_style"],
             "source_sha256": job["source_sha256"],
             "input_sha256": job["input_sha256"],
             "context_sha256": job["context_sha256"],

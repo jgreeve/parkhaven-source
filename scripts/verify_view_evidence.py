@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import struct
 import sys
 import threading
@@ -27,7 +28,11 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 def main():
-    plugin_evidence = json.loads((ROOT / "docs/rhino_plugin_verification.json").read_text(encoding="utf-8"))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run-evidence", type=Path, default=ROOT / "docs/rhino_plugin_verification.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "docs/view_evidence_verification.json")
+    args = parser.parse_args()
+    plugin_evidence = json.loads(args.run_evidence.read_text(encoding="utf-8"))
     workspace = Path(plugin_evidence["workspace"])
     project_id = plugin_evidence["job"]["project_id"]
     run_id = plugin_evidence["job"]["run_id"]
@@ -101,7 +106,7 @@ def main():
         image = Path(job["data_dir"]) / view["path"]
         data = image.read_bytes()
         width, height = struct.unpack(">II", data[16:24])
-        assert (width, height) == (1200, 800)
+        assert (width, height) == (768, 512)
         view_report.append({key: view[key] for key in (
             "id", "image_sha256", "bytes", "width", "height", "camera_position",
             "camera_target", "camera_up", "visible_layers")})
@@ -111,6 +116,7 @@ def main():
         "project_id": project_id,
         "run_id": run_id,
         "capture_id": published["capture_id"],
+        "render_style": published["render_style"],
         "scene_sha256": published["scene_sha256"],
         "geometry_summary_sha256": published["geometry_summary_sha256"],
         "results_sha256": published["results_sha256"],
@@ -125,9 +131,8 @@ def main():
         "ground_status": published["ground_status"],
         "views": view_report,
     }
-    output = ROOT / "docs/view_evidence_verification.json"
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"PASS: live baseline controlled view evidence. Evidence: {output}")
+    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"PASS: live controlled view evidence. Evidence: {args.output}")
 
 
 if __name__ == "__main__":

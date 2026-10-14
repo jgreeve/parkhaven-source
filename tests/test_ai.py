@@ -23,6 +23,7 @@ def evidence():
         "metric_fields": {"bvo_m2"},
         "design_elements": [ELEMENT],
         "element_ids": {"volume-a"},
+        "horizontal_moves_allowed": True,
         "provenance": {"view_evidence_sha256": "1" * 64},
     }
 
@@ -388,3 +389,33 @@ def test_review_rejects_duplicate_design_actions():
     review["ontwerpacties"][1] = dict(review["ontwerpacties"][0], prioriteit=2)
     with pytest.raises(ai.AiError, match="verschillende ontwerpacties"):
         ai._validate_review(review, evidence())
+
+
+def test_review_rejects_horizontal_move_without_verified_site_constraints():
+    current_evidence = evidence()
+    current_evidence["horizontal_moves_allowed"] = False
+    review = valid_review()
+    with pytest.raises(ai.AiError, match="plot- en infrastructuurconstraints ontbreken"):
+        ai._validate_review(review, current_evidence)
+
+
+def test_review_accepts_within_footprint_tests_without_site_constraints():
+    current_evidence = evidence()
+    current_evidence["horizontal_moves_allowed"] = False
+    review = valid_review()
+    for action, operation, direction in zip(review["ontwerpacties"], ("raise", "lower", "narrow"),
+                                             ("up in the overview", "down in the overview", "inward in the overview")):
+        action.update(ingreep=operation, richting=direction)
+    assert len(ai._validate_review(review, current_evidence)["ontwerpacties"]) == 3
+
+
+def test_review_rejects_hidden_horizontal_move_in_action_prose():
+    current_evidence = evidence()
+    current_evidence["horizontal_moves_allowed"] = False
+    review = valid_review()
+    for action, operation, direction in zip(review["ontwerpacties"], ("raise", "lower", "narrow"),
+                                             ("up in the overview", "down in the overview", "inward in the overview")):
+        action.update(ingreep=operation, richting=direction)
+    review["ontwerpacties"][0]["ontwerpdoel"] = "Shift the volume away from the tunnel."
+    with pytest.raises(ai.AiError, match="toelichting.*horizontale verplaatsing"):
+        ai._validate_review(review, current_evidence)
