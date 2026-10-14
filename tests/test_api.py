@@ -13,7 +13,7 @@ from app.projects import ProjectError
 from app.view_evidence import MAX_IMAGE_BYTES, _decode_png
 
 
-def png_data_url(width=1200, height=800):
+def png_data_url(width=768, height=512):
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
     rows = b"".join(b"\x00" + b"\x00\x00\x00" * width for _ in range(height))
@@ -52,6 +52,12 @@ def test_health_and_ui(client):
     assert client.get("/api/health").json() == {"status": "ok", "version": "0.1.0"}
     assert "ParkHaven" in client.get("/").text
     assert client.get("/styles.css").status_code == 200
+    page = client.get("/").text
+    viewer = client.get("/viewer.js").text
+    assert "Schaduwscreening" in page and "UTCI / hittestress (screening)" in page
+    assert "Palenfundering (indicatief)" in page
+    assert "[1, 2].includes(data.schema_version)" in viewer
+    assert "Uint8BufferAttribute(vertexColors, 3, true)" in viewer
 
 
 def test_create_list_and_open_project(client, tmp_path):
@@ -106,6 +112,8 @@ def test_placement_must_be_approved_before_analysis(client, tmp_path, monkeypatc
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"definition")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     monkeypatch.setattr(main, "ANALYZER_ROOT", analyzer)
 
     started = client.post(f"/api/projects/{project_id}/analysis", json={"launch_rhino": False})
@@ -128,6 +136,8 @@ def test_completed_run_has_printable_report(client, tmp_path, monkeypatch):
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"definition")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     monkeypatch.setattr(main, "ANALYZER_ROOT", analyzer)
     job = client.post(f"/api/projects/{project_id}/analysis", json={"launch_rhino": False}).json()
     run_dir = Path(job["data_dir"]).parent
@@ -141,8 +151,8 @@ def test_completed_run_has_printable_report(client, tmp_path, monkeypatch):
 
     report = client.get(f"/projects/{project_id}/runs/{job['run_id']}/report")
     assert report.status_code == 200
-    assert "1.000,0 m2" in report.text
-    assert "Opslaan als PDF" in report.text
+    assert "1,000.0 m²" in report.text
+    assert "Save as PDF" in report.text
     missing_evidence = client.post(f"/api/projects/{project_id}/runs/{job['run_id']}/ai-review", json={
         "endpoint": "https://ai.example.test/v1", "api_key": "temporary",
         "model": "vision-model", "design_goal": "Meer zicht",
@@ -161,6 +171,8 @@ def test_scene_is_only_served_as_no_store_completed_evidence(client, tmp_path, m
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"definition")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     monkeypatch.setattr(main, "ANALYZER_ROOT", analyzer)
     job = client.post(f"/api/projects/{project_id}/analysis", json={"launch_rhino": False}).json()
     run_dir = Path(job["data_dir"]).parent
@@ -247,20 +259,31 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"definition")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     monkeypatch.setattr(main, "ANALYZER_ROOT", analyzer)
     job = client.post(f"/api/projects/{project_id}/analysis", json={"launch_rhino": False}).json()
     data_dir = Path(job["data_dir"])
-    scene = {"schema_version": 1, "units": "meters", "up_axis": "Z", "layers": [
+    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z", "layers": [
         {"name": "PH_DESIGN", "vertices": [0, 0, 0], "triangles": [0, 0, 0]},
         {"name": "REFERENCE_CONTEXT", "vertices": [1, 1, 0], "triangles": [0, 0, 0]},
+        {"name": "ANALYSIS_SHADOW", "vertices": [0, 0, 0], "triangles": [0, 0, 0],
+         "vertex_colors": [20, 80, 180]},
+        {"name": "ANALYSIS_UTCI", "vertices": [0, 0, 0], "triangles": [0, 0, 0],
+         "vertex_colors": [220, 80, 40]},
+        {"name": "ANALYSIS_PILES", "vertices": [0, 0, 0], "triangles": [0, 0, 0]},
     ]}
     scene_bytes = json.dumps(scene).encode()
     summary_bytes = json.dumps({
         "schema_version": 1, "project_id": project_id, "run_id": job["run_id"],
         "source_sha256": job["source_sha256"], "input_sha256": job["input_sha256"],
-        "context_sha256": job["context_sha256"], "placement": job["placement"], "objects": [],
+        "context_sha256": job["context_sha256"], "placement": job["placement"], "objects": [{
+            "id": "source:12345678-1234-1234-1234-123456789abc",
+            "classification": "analysis_volume",
+            "bounds_m": {"min": [-10, -10, 0], "max": [10, 10, 20]},
+        }],
     }).encode()
-    results_bytes = b'{"bvo_m2":1000,"sight_pct":60,"indicative_cost_eur":1800000}'
+    results_bytes = b'{"bvo_m2":1000,"sight_pct":60,"indicative_cost_eur":1800000,"shadow_mean_hours":4.5,"utci_mean_c":27.4,"pile_count_load":42}'
     (data_dir / "scene.json").write_bytes(scene_bytes)
     (data_dir / "geometry-summary.json").write_bytes(summary_bytes)
     (data_dir / "latest.json").write_bytes(results_bytes)
@@ -274,10 +297,10 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
         "geometry_summary_sha256": hashlib.sha256(summary_bytes).hexdigest(),
         "site_context_sha256": client.get("/api/site-context").json()["manifest_sha256"],
         "views": [{
-            "id": view_id, "image_data_url": image, "width": 1200, "height": 800,
+            "id": view_id, "image_data_url": image, "width": 768, "height": 512,
             "projection": "perspective", "fov_degrees": 40,
             "camera_position": [10, -10, 10], "camera_target": [0, 0, 0], "camera_up": [0, 0, 1],
-            "visible_layers": ["PH_DESIGN", "REFERENCE_CONTEXT", "PDOK_AERIAL"],
+            "visible_layers": ["PH_DESIGN", "REFERENCE_CONTEXT", "ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES", "PDOK_AERIAL"],
         } for view_id in ("top", "overview", "facade-side", "park-side")],
     }
     url = f"/api/projects/{project_id}/runs/{job['run_id']}/view-evidence"
@@ -287,6 +310,7 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
     assert manifest["run_id"] == job["run_id"] and len(manifest["views"]) == 4
     assert manifest["scene_sha256"] == payload["scene_sha256"]
     assert manifest["results_sha256"] == hashlib.sha256(results_bytes).hexdigest()
+    assert manifest["weather_sha256"] == job["weather_sha256"]
     assert {view["id"] for view in manifest["views"]} == {"top", "overview", "facade-side", "park-side"}
     assert all((data_dir / view["path"]).read_bytes().startswith(b"\x89PNG") for view in manifest["views"])
     assert json.loads((data_dir / "view-evidence.json").read_text(encoding="utf-8"))["capture_id"] == manifest["capture_id"]
@@ -308,8 +332,13 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
                   "model": "vision-model", "design_goal": "Meer parkzicht"}
     advice = client.post(ai_url, json=ai_payload)
     assert advice.status_code == 200 and advice.json()["visual_evidence_used"] is True
-    assert [item["id"] for item in captured["evidence"]["images"]] == ["top", "overview", "facade-side", "park-side"]
-    assert captured["evidence"]["metric_fields"] == {"bvo_m2", "sight_pct", "indicative_cost_eur"}
+    assert captured["evidence"]["images"] == []
+    assert captured["evidence"]["view_ids"] == {"top", "overview", "facade-side", "park-side"}
+    assert captured["evidence"]["metric_fields"] == {
+        "bvo_m2", "sight_pct", "indicative_cost_eur", "shadow_mean_hours", "utci_mean_c", "pile_count_load"}
+    assert "geometry" not in captured["evidence"]["structured"]
+    assert set(captured["evidence"]["structured"]) == {
+        "calculated_results", "design_elements", "views", "evidence_status"}
     assert client.get(f"/api/projects/{project_id}/runs/{job['run_id']}").json()["view_evidence_available"] is True
 
     first_image = data_dir / manifest["views"][0]["path"]

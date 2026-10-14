@@ -42,8 +42,10 @@ def main():
     parser.add_argument("--source", type=Path, default=ROOT.parent / "test-ui-dora.3dm")
     parser.add_argument("--output", type=Path, default=ROOT / "docs/rhino_preview_verification.json")
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--analyzer-root", type=Path, default=ROOT.parent / "ParkHaven_Analyzer_App_v0.2")
+    parser.add_argument("--expected-plugin", type=Path)
     args = parser.parse_args()
-    analyzer = ROOT.parent / "ParkHaven_Analyzer_App_v0.2"
+    analyzer = args.analyzer_root.resolve()
     protected = [args.source, analyzer / "ParkHaven_MVP.3dm", analyzer / "ParkHaven_MVP.ghx"]
     hashes = {str(path): _sha256(path) for path in protected}
     temp_root = Path(tempfile.gettempdir()) / "opencode"
@@ -62,6 +64,9 @@ def main():
         completed_jobs.append(job)
         report["job"] = job
         assert job["status"] == "completed", job.get("error") or "Rhino preview timed out"
+        if args.expected_plugin:
+            assert Path(job["plugin_path"]).resolve() == args.expected_plugin.resolve()
+            report["checks"]["expected_registered_plugin_used"] = True
         assert job["job_type"] == "placement_preview" and job["placement"]["approved"] is False
         assert "definition" not in job and "results" not in job
         assert "load_grasshopper" not in job.get("step_seconds", {})

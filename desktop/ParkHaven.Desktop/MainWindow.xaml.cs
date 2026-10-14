@@ -143,6 +143,7 @@ public partial class MainWindow : Window
             window.Show();
             await view.EnsureCoreWebView2Async(environment);
             ConfigureWebView(view.CoreWebView2);
+            view.CoreWebView2.WebMessageReceived += OnWebMessage;
             view.CoreWebView2.Navigate(uri);
         }
         catch (Exception exception)
@@ -159,25 +160,66 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var source = args.Source;
-        if (pickerOpen || !IsAppOrigin(source)) return;
-        string requestId;
+        if (!IsAppOrigin(source)) return;
+        JsonElement root;
         try
         {
             using var message = JsonDocument.Parse(args.WebMessageAsJson);
-            var root = message.RootElement;
-            if (root.ValueKind != JsonValueKind.Object
-                || !root.TryGetProperty("type", out var type) || type.GetString() != "parkhaven.pickDesign"
-                || !root.TryGetProperty("requestId", out var id) || !Guid.TryParse(id.GetString(), out _)) return;
-            requestId = id.GetString()!;
+            root = message.RootElement.Clone();
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException)
         {
             return;
         }
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var type)) return;
+        if (type.GetString() == "parkhaven.savePdf" && sender is CoreWebView2 reportView
+            && Uri.TryCreate(source, UriKind.Absolute, out var reportUri)
+            && reportUri.AbsolutePath.EndsWith("/report", StringComparison.Ordinal))
+        {
+            Dispatcher.BeginInvoke(new Action(async () => await SaveReportPdfAsync(reportView)));
+            return;
+        }
+        if (pickerOpen || type.GetString() != "parkhaven.pickDesign"
+            || !root.TryGetProperty("requestId", out var id) || !Guid.TryParse(id.GetString(), out _)) return;
+        var requestId = id.GetString()!;
 
         pickerOpen = true;
         // WebView2 callbacks cannot synchronously enter a modal message loop.
         Dispatcher.BeginInvoke(new Action(() => PickDesign(requestId, source)));
+    }
+
+    private async Task SaveReportPdfAsync(CoreWebView2 reportView)
+    {
+        try
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "ParkHaven report opslaan",
+                Filter = "PDF document (*.pdf)|*.pdf",
+                DefaultExt = ".pdf",
+                AddExtension = true,
+                FileName = "ParkHaven-design-review.pdf",
+                OverwritePrompt = true,
+            };
+            if (dialog.ShowDialog(this) != true) return;
+            var settings = reportView.Environment.CreatePrintSettings();
+            settings.Orientation = CoreWebView2PrintOrientation.Portrait;
+            settings.ShouldPrintBackgrounds = true;
+            settings.ShouldPrintHeaderAndFooter = false;
+            settings.PageWidth = 8.27;
+            settings.PageHeight = 11.69;
+            settings.MarginTop = 0.43;
+            settings.MarginBottom = 0.43;
+            settings.MarginLeft = 0.43;
+            settings.MarginRight = 0.43;
+            if (!await reportView.PrintToPdfAsync(dialog.FileName, settings))
+                MessageBox.Show(this, "De PDF kon niet worden opgeslagen.", "ParkHaven", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception exception)
+        {
+            backend?.Log("PDF-export: " + exception.Message);
+            MessageBox.Show(this, "De PDF kon niet worden opgeslagen. Probeer opnieuw.", "ParkHaven", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void PickDesign(string requestId, string source)

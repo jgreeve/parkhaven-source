@@ -30,7 +30,7 @@ The current slice provides:
 - per-project coordinate-unit correction for mislabelled models, applied only to analysis copies;
 - compiled C# Rhino plug-in, automatic isolated Grasshopper solve and verified baseline results;
 - run cancellation, process-exit detection and startup/solve timeouts;
-- run result polling, evidence-grounded OpenAI-compatible multimodal advice and printable reporting.
+- run result polling, evidence-grounded OpenAI-compatible text advice and native A4 PDF reporting;
 - an attributed, locally pinned PDOK 2025 aerial beneath the existing 3D context, explicitly marked as provisional visual evidence.
 
 Private-certificate AI connectivity can be configured through an ignored local

@@ -47,6 +47,11 @@ enforcement. It does not prove API-key permissions, vision input, JSON output or
 model inference. Never paste credentials into shell history, documentation, issues,
 logs or repository files.
 
+The private tester build automatically includes `ai-trust.local.json` and only the
+public certificate files referenced by its profiles. If no local profile exists, it
+includes the tracked empty `ai-trust.json`. The build rejects missing certificate
+files, paths outside `config/` and PEM files containing private-key material.
+
 When a certificate is renewed, obtain the new public certificate and fingerprint
 through an authenticated administrative channel. Update only the local/deployment
 profile; the client never automatically accepts changed certificate identity.

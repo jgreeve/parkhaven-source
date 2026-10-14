@@ -20,6 +20,8 @@ def run_setup(tmp_path, monkeypatch):
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"GHX")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     runner = Path(workflow.__file__).parent / "rhino/run_analysis.py"
     executable = tmp_path / "Rhino.exe"
     executable.touch()
@@ -43,6 +45,9 @@ def test_run_snapshots_and_provenance(run_setup):
     assert first_model != Path(second["working_model"])
     assert first["input_sha256"] == first["source_sha256"] == _sha256(source)
     assert first["definition_sha256"] == _sha256(Path(first["definition"]))
+    run_weather = Path(first["definition"]).parent / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw"
+    assert run_weather.read_text() == "weather"
+    assert first["weather_sha256"] == _sha256(run_weather)
     assert first["placement"]["rotation_z_degrees"] == 90
     first_model.write_bytes(b"run-local edit")
     assert Path(second["working_model"]).read_bytes() == source.read_bytes()
@@ -62,6 +67,20 @@ def test_unit_correction_is_snapshotted_per_run_without_scaling_source(run_setup
     assert workflow.load_run(root, project_id, old["run_id"])["placement"]["model_units"] == "file"
     for path in (source, Path(corrected["working_model"]), root / project_id / "working/parkhaven-design.3dm"):
         assert path.read_bytes() == original
+
+
+def test_packaged_plugin_path_rejects_stale_registration(tmp_path, monkeypatch):
+    installed = tmp_path / "installed" / "RhinoPlugin" / "ParkHaven.Rhino.rhp"
+    installed.parent.mkdir(parents=True)
+    installed.touch()
+    development = tmp_path / "source" / "ParkHaven.Rhino.rhp"
+    development.parent.mkdir()
+    development.touch()
+    monkeypatch.setenv("PARKHAVEN_EXPECTED_PLUGIN", str(installed))
+
+    with pytest.raises(ProjectError, match="deze ParkHaven-installatie"):
+        workflow._validated_plugin_path(str(development), 1)
+    assert workflow._validated_plugin_path(str(installed), 1) == installed.resolve()
 
 
 def test_preview_snapshots_unapproved_placement_without_analysis_assets(run_setup):

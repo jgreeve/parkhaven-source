@@ -62,6 +62,38 @@
         <button id="close-project" class="secondary" type="button">Sluiten</button>
       </div>
       <div class="workflow-grid">
+        <article class="panel workflow-card placement-card">
+          <p class="eyebrow">02 / POSITIONEREN</p>
+          <h3>Plaatsing op Parkhaven</h3>
+          <p>Leg de horizontale verschuiving en rotatie vast. Een goedgekeurde plaatsing is verplicht voor analyse.</p>
+          <form id="placement-form" class="compact-form">
+            <div class="field-row">
+              <label>X (m)<input id="place-x" type="number" step="0.1" required></label>
+              <label>Y (m)<input id="place-y" type="number" step="0.1" required></label>
+              <label>Z (m)<input id="place-z" type="number" step="0.1" required></label>
+              <label>Rotatie (graden)<input id="place-rotation" type="number" step="0.1" required></label>
+            </div>
+            <label>Modeleenheid (betekenis van 1 coördinaat)
+              <select id="place-model-units" aria-describedby="model-units-help">
+                <option value="file">Bestandseenheid gebruiken</option>
+                <option value="meters">Meters — 1 = 1 m</option>
+                <option value="millimeters">Millimeters — 1 = 1 mm</option>
+                <option value="centimeters">Centimeters — 1 = 1 cm</option>
+              </select>
+            </label>
+            <p id="model-units-help" class="small-note">Staat een gebouw van 21 meter als hoogte 21 in een millimeterbestand? Kies dan Meters.
+              Alleen de analysekopie wordt geschaald; het bronbestand blijft intact. X/Y/Z blijven in meters.</p>
+            <label class="approval"><input id="place-approved" type="checkbox"> Ik keur deze plaatsing en modeleenheid goed voor analyse</label>
+            <button type="submit">Plaatsing opslaan</button>
+            <p id="placement-status" role="status"></p>
+          </form>
+          <div class="preview-actions">
+            <button id="start-preview" type="button">3D-preview maken</button>
+            <button id="cancel-preview" class="secondary" type="button" disabled>Preview annuleren</button>
+          </div>
+          <p id="preview-status" class="small-note" role="status">Maak na het opslaan een preview zonder Grasshopper-berekening.</p>
+        </article>
+
         <article id="model-viewer" class="panel workflow-card viewer-card" aria-labelledby="viewer-title" data-state="empty">
           <div class="viewer-toolbar">
             <div><p id="viewer-kind" class="eyebrow">3D / PLAATSINGSPREVIEW</p><h3 id="viewer-title">Ontwerp en referentiecontext</h3></div>
@@ -97,8 +129,15 @@
             <label><input type="checkbox" data-viewer-layer="PH_FACADES" checked><span class="viewer-swatch facades"></span>Gevels</label>
             <label><input type="checkbox" data-viewer-layer="PH_TARGET" checked><span class="viewer-swatch target"></span>Parkdoel</label>
             <label><input type="checkbox" data-viewer-layer="REFERENCE_CONTEXT" checked><span class="viewer-swatch context"></span>Context</label>
+            <label><input type="checkbox" data-viewer-layer="ANALYSIS_SHADOW" checked><span class="viewer-swatch shadow"></span>Schaduw (screening)</label>
+            <label><input type="checkbox" data-viewer-layer="ANALYSIS_UTCI" checked><span class="viewer-swatch utci"></span>UTCI (screening)</label>
+            <label><input type="checkbox" data-viewer-layer="ANALYSIS_PILES" checked><span class="viewer-swatch piles"></span>Palen (indicatief)</label>
             <label><input id="aerial-visible" type="checkbox" checked disabled><span class="viewer-swatch aerial"></span>PDOK-luchtfoto</label>
             <label class="aerial-opacity">Dekking <input id="aerial-opacity" type="range" min="0.2" max="1" step="0.1" value="0.8" disabled></label>
+          </div>
+          <div id="analysis-legends" class="analysis-legends" aria-label="Legenda analyseresultaten" hidden>
+            <span><b class="legend-gradient shadow"></b>Schaduw: weinig → veel zonuren</span>
+            <span><b class="legend-gradient utci"></b>UTCI: koeler → warmer</span>
           </div>
           <div class="viewer-frame">
             <div id="viewer-canvas" tabindex="0" aria-label="3D-model: sleep om te draaien, rechtermuisknop om te schuiven en scroll om te zoomen"></div>
@@ -122,38 +161,6 @@
           </section>
         </article>
         <article class="panel workflow-card">
-          <p class="eyebrow">02 / POSITIONEREN</p>
-          <h3>Plaatsing op Parkhaven</h3>
-          <p>Leg de horizontale verschuiving en rotatie vast. Een goedgekeurde plaatsing is verplicht voor analyse.</p>
-          <form id="placement-form" class="compact-form">
-            <div class="field-row">
-              <label>X (m)<input id="place-x" type="number" step="0.1" required></label>
-              <label>Y (m)<input id="place-y" type="number" step="0.1" required></label>
-              <label>Z (m)<input id="place-z" type="number" step="0.1" required></label>
-              <label>Rotatie (graden)<input id="place-rotation" type="number" step="0.1" required></label>
-            </div>
-            <label>Modeleenheid (betekenis van 1 coördinaat)
-              <select id="place-model-units" aria-describedby="model-units-help">
-                <option value="file">Bestandseenheid gebruiken</option>
-                <option value="meters">Meters — 1 = 1 m</option>
-                <option value="millimeters">Millimeters — 1 = 1 mm</option>
-                <option value="centimeters">Centimeters — 1 = 1 cm</option>
-              </select>
-            </label>
-            <p id="model-units-help" class="small-note">Staat een gebouw van 21 meter als hoogte 21 in een millimeterbestand? Kies dan Meters.
-              Alleen de analysekopie wordt geschaald; het bronbestand blijft intact. X/Y/Z blijven in meters.</p>
-            <label class="approval"><input id="place-approved" type="checkbox"> Ik keur deze plaatsing en modeleenheid goed voor analyse</label>
-            <button type="submit">Plaatsing opslaan</button>
-            <p id="placement-status" role="status"></p>
-          </form>
-          <div class="preview-actions">
-            <button id="start-preview" type="button">3D-preview maken</button>
-            <button id="cancel-preview" class="secondary" type="button" disabled>Preview annuleren</button>
-          </div>
-          <p id="preview-status" class="small-note" role="status">Maak na het opslaan een preview zonder Grasshopper-berekening.</p>
-        </article>
-
-        <article class="panel workflow-card">
           <p class="eyebrow">03 / ANALYSEREN</p>
           <h3>Rhino + Grasshopper</h3>
           <p>Start een geisoleerde run. Rhino opent zichtbaar, bereidt de analyselagen in het geheugen voor en schrijft resultaten in dit project.</p>
@@ -164,6 +171,9 @@
            <p id="analysis-warnings" class="small-note"></p>
           <div id="metrics" class="mini-metrics" hidden>
             <p>BVO <strong id="metric-bvo">-</strong></p><p>Zicht <strong id="metric-sight">-</strong></p><p>Kosten <strong id="metric-cost">-</strong></p>
+            <p id="metric-shadow-card" hidden>Schaduwscreening <strong id="metric-shadow">-</strong><small id="metric-shadow-range"></small></p>
+            <p id="metric-utci-card" hidden>UTCI / hittestress (screening) <strong id="metric-utci">-</strong><small id="metric-heat"></small></p>
+            <p id="metric-piles-card" hidden>Palenfundering (indicatief) <strong id="metric-piles">-</strong><small id="metric-piles-detail"></small></p>
           </div>
           <p id="metrics-provenance" class="small-note"></p>
           <button id="capture-views" class="secondary" type="button" disabled>Vier modelbeelden vastleggen</button>
@@ -186,7 +196,7 @@
         <article class="panel workflow-card">
           <p class="eyebrow">05 / RAPPORT</p>
           <h3>Rapport opslaan</h3>
-          <p>Open het Nederlandse rapport en gebruik de afdrukdialoog om het als PDF op te slaan.</p>
+          <p>Open het Engelstalige rapport en gebruik de afdrukdialoog om het als PDF op te slaan.</p>
           <a id="report-link" class="button-link disabled" href="#" target="_blank" aria-disabled="true">Rapport openen</a>
           <p class="small-note">Het rapport toont alleen werkelijk beschikbare resultaten en labelt AI-inferentie afzonderlijk.</p>
         </article>

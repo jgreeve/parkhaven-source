@@ -5,8 +5,8 @@ Started: 2026-09-29
 This is the continuity record for the new desktop application. Update it after
 every significant implementation and verification stage.
 
-Last synchronized: **2026-10-02**, after the model-grounded multimodal AI request
-and response-validation checkpoint. Product roadmap:
+Last synchronized: **2026-10-14**, after DeepSeek compatibility, native PDF export,
+and evidence-integrity hardening. Product roadmap:
 [`plan.md`](../ParkHaven_Analyzer_App_v0.2/docs/plan.md). The roadmap lives in the
 analyser's documentation; the desktop implementation lives in this independent
 `ParkHaven_App_v0.1` folder.
@@ -38,10 +38,281 @@ The placement/viewer workflow, stable geometry summaries and controlled same-run
 top/overview/facade/park captures are now implemented and hash-bound to calculations.
 An attributed, locally pinned PDOK 2025 orthophoto now supplies visual site context
 beneath the design and existing 3D building meshes.
-Unverified north, plot and ground remain unavailable. Multimodal request assembly
-and strict evidence-linked response validation are implemented and mock-verified;
-live Spark vision acceptance still requires user credentials and an exact model ID.
+Unverified north, plot and ground remain unavailable. The AI receives a bounded text
+package derived from the controlled views, geometry and unchanged metrics; evidence
+images remain local for human review and are not uploaded. Strict evidence-linked
+response validation is implemented and mock-verified. Endpoint-specific certificate
+trust remains available for private deployments. Live provider acceptance still
+requires an ephemeral user credential and an exact supported model ID.
 The complete desktop v1 remains in development.
+
+### DeepSeek, native PDF and integrity hardening, 2026-10-14
+
+- Added an official DeepSeek compatibility profile that disables thinking and
+  reasoning effort and requests JSON output. Other OpenAI-compatible endpoints retain
+  the generic request shape. Grounded provider aliases are normalized without
+  accepting unknown view, object or metric references.
+- AI output now requires exactly three distinct prioritized design actions. Each uses
+  the requested 5-10% relative sensitivity range and includes a grounded spatial
+  direction, objective, conditional effect, trade-off and recalculation metrics.
+  Legacy compact recommendations no longer bypass this contract.
+- Provider success/error bodies and evidence JSON now have bounded reads. Endpoint
+  URLs reject embedded user information, query parameters and fragments so secrets
+  cannot enter persisted endpoint settings or logs. Refusal details remain bounded
+  and redact the ephemeral API key.
+- Evidence publication now includes the run-local weather hash. AI loading and report
+  rendering require matching scene, geometry, results, weather, manifest and image
+  hashes; modifying any captured image or calculated artifact makes saved advice
+  ineligible for grounded display. Report screening tables appear only when every
+  metric needed by the table is present.
+- Native desktop PDF export uses WebView2 `PrintToPdfAsync` with an explicit Save
+  dialog and A4 settings, avoiding browser print headers. The real WebView2 smoke test
+  reached the native dialog from the report's `#save-pdf` control.
+- Removed broad recursive installer pre-deletion of generic `backend` and
+  `RhinoPlugin` directories and disabled destination-directory selection. Upgrade
+  installation now overwrites only packaged paths instead of deleting an arbitrary
+  user-selected tree before validation.
+- Verification: **124 Python tests pass** with the known TestClient deprecation
+  warning; `git diff --check` passes apart from line-ending notices; desktop Release
+  build passes with zero warnings/errors; Python compilation and both JavaScript
+  syntax checks pass; the isolated packaged payload smoke test passes. The rebuilt
+  unsigned tester is `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, **65,371,658
+  bytes**, SHA-256
+  **66602b0956645addd9863aa8defdf94f5ddf432e0d307e3fad8ee949f994e99e**.
+  Silent upgrade installation and the installed-directory payload smoke test pass.
+- Remaining release limitations: packages and Rhino plug-in are not Authenticode-
+  signed because no signing certificate is available; EPW redistribution approval is
+  external; submitted controlled-camera metadata is structurally validated and
+  hash-bound but not independently reconstructed server-side; live provider inference
+  remains unclaimed without the user's ephemeral key.
+
+### AI timeout and model compatibility, 2026-10-09
+
+- Increased the AI provider response timeout from 120 to **180 seconds** for slower
+  local vision models.
+- Shortened the system instruction, requested at most three concise items per list
+  and compacted the evidence JSON encoding. Removed optional `temperature`,
+  `response_format` and image `detail` request fields that some OpenAI-compatible
+  providers reject; evidence content and strict returned-reference validation remain.
+- Added support for provider JSON returned in a Markdown JSON fence or a standard
+  text content-parts list. HTTP provider errors now expose a bounded provider message
+  while redacting the submitted API key. Text-only models still fail explicitly
+  rather than silently dropping the required visual evidence.
+- Focused AI/API/TLS regression: **36 tests pass**; full regression: **93 tests
+  pass** with the known TestClient deprecation warning. The rebuilt tester installed
+  successfully, its isolated payload smoke test passes, Spark TLS still reaches the
+  credential boundary at HTTP 401, and the desktop remained running after startup.
+- Updated installer: `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, 65,132,327
+  bytes, SHA-256
+  **82945cf13d5d1b71c6026d4103a04d4a3687a8a3d6f63ea72c8ec815f060cbd8**.
+  Live model inference remains unclaimed until tested with the user's ephemeral key.
+- **Visual-response compatibility follow-up:** installed use reached a valid provider
+  response but rejected a visual observation because Gemma did not reproduce the
+  requested field shape exactly. Validation now normalizes safe equivalents such as
+  `observatie`/`tekst`, singular/plural evidence-ID fields, a missing optional
+  `object_ids` list and a missing uncertainty statement. Missing uncertainty is
+  recorded explicitly as not specified by the model. Unknown evidence IDs remain
+  rejected. Focused AI/API/TLS regression: **37 tests pass**; full regression:
+  **94 tests pass**. Rebuilt installed-payload and TLS smoke tests pass, installation
+  succeeded and the desktop remained running after startup. Updated installer:
+  **65,135,221 bytes**, SHA-256
+  **8642eddc0e915bc307cca91473cfadfc16046a944cf56ca524b175d5ce835278**.
+
+### Actionable AI advice and report cleanup, 2026-10-09
+
+- Replaced free-form recommendations with exactly three prioritized, structured
+  design actions. Every action must name a labelled volume, supported operation,
+  camera- or volume-anchored direction, concrete test magnitude, design objective,
+  hypothesized effect, trade-off, recalculation metrics and valid evidence refs.
+- Added deterministic design-element derivation for up to eight principal analytical
+  volumes. Stable `Volume A`, `Volume B`, etc. labels retain exact source object IDs,
+  dimensions and per-camera relative screen positions without modifying source/run
+  geometry or evidence images.
+- `massa fase 2` acceptance uses its existing completed run: its three source Breps
+  map to Volume A/B/C in south-to-north local order and to left/middle/right in the
+  overview image. Heights remain the evidenced 58/56/56 m. A dedicated regression
+  fixes this mapping and camera-relative distinction.
+- Rebuilt the printable report around design-action cards, current metric tiles,
+  human-readable evidence labels, observation uncertainty, a four-image evidence
+  gallery, compact limitations and separated technical provenance. Raw UUIDs and
+  internal metric tokens are no longer shown in the main report. Existing older
+  advice is rendered as cleaned general advice until a new model request is made.
+- Automated verification: focused AI/report/API tests pass and the full suite passes
+  **98 tests** with the known TestClient deprecation warning. Live Qwen/Gemma output
+  still requires the user's ephemeral API key after installation.
+- Edge report acceptance with the existing `massa fase 2` evidence passes at 1280 px
+  and 390 px without horizontal overflow; all four evidence figures render and the
+  generated report contains no raw object UUID or metric reference tokens.
+- Installed tester acceptance passes: bundle isolation and secure Spark TLS checks
+  pass, installation completed successfully, and the desktop remained running after
+  startup as process `19320`. Updated installer:
+  `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, **65,143,162 bytes**, SHA-256
+  **fb3a47fefda0d90db63c5598960fb7def04ddd06f06df7f34bc831c510d45231**.
+
+### Grounded response repair and compact PDF, 2026-10-09
+
+- Fixed the reported false rejection of concrete directions such as `naar rechts`:
+  when the action already cites a valid controlled view, its human-readable view
+  anchor is now added deterministically. Unknown evidence and genuinely vague
+  directions remain rejected.
+- Added exactly one JSON-only provider repair attempt for malformed structured
+  responses. Evidence images are not resent; final failures expose only bounded
+  validation details and received field names, never the API key.
+- New captures frame the analytical design plus a controlled context margin instead
+  of the full aerial extent. Report images project stable Volume A/B/C markers onto
+  the evidenced object centres and spread labels to remain readable in side views.
+- The A4 report now uses a fixed three-column metric row and two-column evidence
+  gallery, Dutch date/status labels, cleaned model terminology and compact page-break
+  rules. Actual `massa fase 2` Edge PDF acceptance produces a searchable **2-page**
+  report with all four images, no run UUID and no browser headers when the documented
+  print option is disabled.
+- Verification: **100 Python tests pass**, compileall passes, `git diff --check`
+  passes apart from existing line-ending notices, and the real Edge/WebGL workflow
+  passes all four controlled 1200x800 captures without JavaScript exceptions.
+- Private tester payload isolation and installed Spark TLS checks pass; credential-
+  free `/models` reaches HTTP 401. The installed desktop remains running as process
+  `23952`. Updated installer: `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`,
+  **65,149,606 bytes**, SHA-256
+  **47ed7041c1cffccba3bbd194b927578a05f21f1fc47addeb1de8ac16412de684**.
+- Live model inference remains unclaimed until run with the user's ephemeral API key
+  and exact deployed vision model ID.
+
+### Installed Spark TLS remediation — complete, 2026-10-09
+
+- Root cause: development selected the ignored `config/ai-trust.local.json`, while
+  the installer always packaged the tracked empty `config/ai-trust.json`. The live
+  certificate and its configured leaf SHA-256 pin had not rotated and remained valid.
+- The private tester build now selects the local deployment profile when present and
+  includes only its referenced public certificate files. Builds and bundle checks
+  reject missing files, paths outside `config/`, private-key material and invalid
+  certificate stores. No API key or other credential is packaged.
+- Runtime trust remains restricted to the exact HTTPS origin and pinned leaf. Normal
+  certificate-chain and expiry checks remain enabled; redirects cannot cross origins.
+  Runtime configuration now also rejects CA paths outside its configuration folder.
+- Installed acceptance PASS: the isolated installed payload smoke test passes, and a
+  credential-free request using the installed trust files reaches `/spark/v1/models`
+  over verified TLS and receives HTTP 401. Installed profile/certificate hashes match
+  the deployment inputs exactly. The installed desktop remained running after startup.
+- Verification: **91 Python tests pass**, including CA path-escape rejection. The new
+  installer is `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, 65,131,009 bytes,
+  SHA-256 **d71693d134f95644f9953bc04a6fcbf57285f937a5c724eb4993c0da6c168056**.
+- Remaining Spark acceptance requires the user's ephemeral API key and exact vision
+  model ID for authenticated model listing and one evidence-grounded vision request.
+
+### Active remediation — installed preview, massa fase 2 BVO and viewer order, 2026-10-08
+
+- User-reported acceptance issues: the shared installed build could not create a
+  3D placement preview; `../massa fase 2.3dm` did not produce BVO with the current
+  runtime definition; and placement/setup controls appeared below the 3D viewer.
+- **Installed-preview root cause confirmed in code:** development registration and
+  backend lookup use the bare plug-in GUID registry key, while the Inno installer
+  writes a braced GUID key. Package smoke tests checked file presence and HTTP
+  resources but never exercised installed registry lookup, Rhino startup or scene
+  creation. A development registration could also mask this defect locally.
+- Preview/analyser assets are present in the packaged backend. The fix must make
+  installer registration and backend discovery use one exact registry contract,
+  improve installed-user errors, and add installed-path preview acceptance that
+  verifies the actual installed `.rhp` and packaged analyzer paths.
+- Current BVO preserves the original concept: horizontal slices at floor-height
+  intervals, joined closed section curves, planar floor faces and summed area in
+  square metres. The shipped GHX obtains `PH_DESIGN` through a Geometry Pipeline;
+  app preparation currently accepts only visible, unlocked, valid solid Breps and
+  extrusions as analytical volumes.
+- `../massa fase 2.gh` and `../massa fase 2.3dm` are the user-supplied working
+  reference. The next diagnostic is a controlled live run of the model plus GH
+  archive inspection to identify its direct-reference input strategy and geometry
+  types. Any fix must retain the current section-area concept rather than replacing
+  BVO with a different metric.
+- **Viewer-order cause confirmed:** DOM order places the full-width 520 px viewer
+  before step 02 placement controls. JavaScript already enforces save -> preview ->
+  inspect -> approve/analyse. The minimal UI correction is to move the placement
+  card before the viewer and make the placement card full width; IDs and behavior
+  can remain unchanged.
+- Verification pending: model-specific Rhino preview/analysis, baseline numerical
+  regression, source/hash preservation, installed package preview, full Python and
+  browser/native workflow checks.
+- **Initial live `massa fase 2` reproduction:** the production path reached
+  Grasshopper and classified all three input objects as analytical Breps, then
+  failed with `Grasshopper leverde geen geldige waarde voor bvo_m2`. The BVO
+  component warning was `An open floor section cannot be measured.` Source and all
+  isolated copies retained their hashes.
+- The file declares millimetres while its raw dimensions are approximately
+  `175.31 x 330.57 x 60.07` coordinates, yielding an implausible interpreted size
+  of `0.175 x 0.331 x 0.060 m` with file units. A meter-interpretation run is in
+  progress to isolate units from section joining; no automatic filename-specific
+  unit correction will be introduced.
+- **Reference graph diagnosis completed:** `massa fase 2.gh` merges and joins the
+  design Breps, applies a solid union, sections that union on one shared series of
+  horizontal floor planes, joins all curves per plane, creates boundary surfaces
+  and sums their areas. The current embedded script instead sectioned each mass and
+  failed the whole calculation on any open fragment. The implementation is being
+  aligned to the reference graph while retaining current floor datum, partial-storey
+  handling, unit conversion and closed-solid validation.
+- A first real-model test after adding solid union still found an unclosed section.
+  Archive inspection confirmed the reference `Join Curves Plus` component receives
+  an explicit `1.2` join tolerance. The embedded implementation is therefore being
+  tested with the same 1.2 m authored tolerance converted to Rhino document units,
+  never below the document absolute tolerance.
+- **Real-model BVO now completes:** exact minimum-height slicing produced 68
+  coplanar edge fragments. Feeding those fragments directly to planar-boundary
+  creation completed but overcounted duplicate faces. The current implementation
+  retains exact floor planes where they form complete closed contours and retries
+  a branching coplanar section two model tolerances above the face. With explicit
+  meter interpretation, `massa fase 2.3dm` now completes at **51,867.81193063637
+  m2**, sight **24.53%**, and matching cost **EUR 93,362,061.47514547**; source,
+  working, run and analyser protected files retained their hashes. Numerical
+  acceptance remains pending comparison to the supplied GH and baseline regression.
+- **Baseline numerical regression PASS:** the real Rhino plug-in path still returns
+  the exact verified baseline BVO `17024.070833234422 m2`, sight `65.12%` and cost
+  `30643327.49982196`, with source/analyser hashes preserved.
+- Installer registration now uses the same bare GUID key as Rhino/backend discovery.
+  Packaged desktop startup supplies the exact bundled `.rhp` path to the backend;
+  registry discovery rejects a stale development registration that points outside
+  the active installation.
+- Step 02 placement controls now precede the full-width viewer in DOM order and are
+  full width themselves. Existing control IDs and JavaScript workflow remain intact.
+- Focused workflow tests pass (**16**), the full Python suite passes (**90 tests**),
+  desktop Release build and both JavaScript syntax checks pass. A direct plug-in
+  rebuild exposed that active Rhino sessions lock the development `.rhp`; packaging
+  now builds the plug-in into its isolated build directory so an unrelated open
+  Rhino session cannot block or contaminate the installer payload.
+- **First installed preview PASS, repeat exposed registry normalization:** the
+  installed plug-in and packaged analyser produced a complete preview. On plug-in
+  load Rhino removed the installer's redundant root-level `FileName` but retained
+  the authoritative `PlugIn\FileName`, causing the initial strict consistency check
+  to reject the second preview. Discovery now validates Rhino's nested path directly
+  against the exact active installation and permits this normal Rhino rewrite.
+- **Final acceptance PASS:** the corrected installer was rebuilt, silently installed
+  and exercised through two consecutive real Rhino placement previews. Both used
+  `AppData\Local\Programs\ParkHaven Studio\RhinoPlugin\ParkHaven.Rhino.rhp` and
+  the analyser inside `backend\_internal\analyzer`; stable object evidence, all
+  scene layers and protected hashes passed. The installed native desktop picker,
+  Unicode import, authenticated backend/report and clean shutdown smoke also passed.
+- Final regression: **90 Python tests pass** with the known TestClient deprecation
+  warning; Edge/WebGL workflow passes without JavaScript exceptions; desktop and
+  isolated Rhino plug-in Release builds pass with zero warnings/errors; baseline
+  BVO remains exact; `massa fase 2.3dm` completes with meter interpretation.
+- Silent uninstall removed the complete install directory and bare-GUID plug-in
+  registry key. The same final artifact was then silently reinstalled successfully.
+- Final internal tester artifact (unsigned):
+  `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, size **65,131,002 bytes**,
+  SHA-256 **b61bfba41622b97c69ebbf3fde5d062d12077bf6922925f7439ae506c02e44e8**.
+- **Capture UX follow-up:** tester evidence showed a completed analysis could leave
+  the viewer in placement-preview mode, making `Vier modelbeelden vastleggen`
+  remain disabled while its status requested `Laatste analyse`. Run polling now
+  switches a newly completed analysis to the analysis viewer automatically and
+  presents an actionable capture message. Manual preview/analysis switching remains
+  available.
+- Capture UX verification passes in real Edge/WebGL, including four controlled
+  captures and evidence upload, and all **90 Python tests** still pass. The updated
+  tester was rebuilt, silently installed with close-application handling and opened
+  successfully (desktop process `28044`).
+- Reopening a project that has both a placement preview and a completed analysis now
+  defaults to the completed analysis scene, so capture is immediately available;
+  projects without completed analysis evidence still default to their preview.
+- The reopened-project default and enabled capture state pass the Edge workflow.
+  The final follow-up artifact was installed and opened successfully as desktop
+  process `8240`.
 
 ### Active implementation — pre-analysis preview foundation, 2026-10-01
 
@@ -774,12 +1045,14 @@ Latest desktop checks on 2026-09-30; earlier Rhino evidence retained:
 - Calculation migration and scoring.
 - Heat-resilience proxy and procedural greenery.
 - Secure saved AI credentials.
-- Automated PDF generation and installer packaging (browser print reporting exists).
+- Authenticode signing and approved release distribution.
 
 ## Exact next tasks
 
-**Prepared only: do not start implementation as part of this request.** The next
-coding session should start with task 1 after a subsequent implementation instruction.
+The next release step is installed-machine acceptance of the rebuilt hardened private
+tester. Live AI acceptance then requires the user's ephemeral API key and exact
+provider model ID. The numbered items below remain the broader product backlog and
+historical record.
 
 The Dora scale investigation, known-size unit/placement acceptance, preparation
 hang fix and interrupted Developer-tab work are complete. To retest Dora in the
@@ -858,11 +1131,12 @@ placement and start a new run. Existing historical results are not rewritten.
 ### 4. Model-grounded AI advice and Spark acceptance
 
 - **Implementation completed:** the AI client/request route requires a valid selected-
-  run `view-evidence.json` and `geometry-summary.json`, send the four PNGs through
-  the provider's real image-input format alongside unchanged metrics and bounded
-  geometry data, and schema-validate Dutch evidence references. Add mocked provider
-  tests for stale/missing evidence, malformed JSON and invented object/view/metric
-  references. Do not claim live vision support until tested with user credentials.
+  run `view-evidence.json` and `geometry-summary.json`, sends a bounded text package
+  derived from the controlled views alongside unchanged metrics and geometry data,
+  and schema-validates evidence references. Images remain local and are not sent to
+  the provider. Mocked tests cover stale/missing evidence, malformed JSON and invented
+  object/view/metric references. Do not claim live provider support until tested with
+  user credentials.
 - Use the deployment endpoint from ignored local configuration with the user's
   credentials and exact model ID. Verify authentication plus real image-input and
   structured-JSON support.
@@ -872,13 +1146,13 @@ placement and start a new run. Existing historical results are not rewritten.
   object/view IDs and metric fields; distinguish visual inference from measurement.
 - Label unsupported vision explicitly. A limited text-only fallback cannot claim
   the model was visually inspected or fulfill the visual-advice acceptance gate.
-- **Acceptance:** inspect outgoing multimodal requests, test invalid references,
-  unsupported images and stale evidence, then verify live advice against controlled
-  model views. Credential-free HTTP 401 and text-only success remain insufficient.
-- **Exact next acceptance step:** with the user's API key and exact Spark vision-model
-  ID, submit the verified baseline evidence, inspect the provider response and retain
-  a redacted result proving image input plus structured JSON support. Until then,
-  unsupported-image behavior and live Dutch model observations remain unverified.
+- **Acceptance:** inspect outgoing requests, test invalid references and stale
+  evidence, then verify live advice against the bounded evidence package. A
+  credential-free HTTP 401 remains insufficient.
+- **Exact next acceptance step:** with the user's API key and exact supported model
+  ID, submit verified baseline evidence, inspect the provider response and retain a
+  redacted result proving grounded structured JSON support. Until then, live model
+  advice remains unverified.
 
 ### Later milestones
 

@@ -1,6 +1,6 @@
 # Third-party and data notices
 
-This file is a distribution checklist, not a complete release notice yet.
+This file is a distribution checklist, not a complete public release notice yet.
 
 ## PDOK aerial imagery
 
@@ -14,14 +14,36 @@ confirmed before an end-user release. Required attribution:
 
 ## Three.js
 
-The viewer currently loads Three.js 0.180.0 and OrbitControls from the sibling
-analyser workspace. Three.js is MIT-licensed. A standalone release must bundle the
-pinned files and their upstream MIT licence; they are not yet contained here.
+The standalone tester package bundles the pinned Three.js 0.180.0 viewer files and
+OrbitControls from the analyser workspace. Three.js is MIT-licensed and its upstream
+licence is included beside those files.
+
+## pythermalcomfort UTCI implementation
+
+The native Grasshopper UTCI screening ports the standard UTCI approximation
+from the MIT-licensed `pythermalcomfort` implementation. Copyright (c) 2019
+Federico Tartarini. The upstream source and licence are available at
+<https://github.com/CenterForTheBuiltEnvironment/pythermalcomfort>.
+
+## Rotterdam-Geulhaven TMYx weather data
+
+The tester bundles the Rotterdam-Geulhaven EPW typical meteorological year from
+Climate.OneBuilding.Org. The exact source URL, retrieval date and SHA-256 are
+recorded in the bundled `weather/README.md`. Confirm the upstream data licence
+and cached-redistribution terms before an external release.
 
 ## Microsoft WebView2
 
-The desktop uses the Microsoft.Web.WebView2 NuGet package. Preserve the applicable
-Microsoft notices and verify the supported Evergreen Runtime distribution model.
+The desktop uses the Microsoft.Web.WebView2 NuGet package. The tester installer
+includes Microsoft's Evergreen bootstrapper and invokes it during installation.
+Preserve the applicable Microsoft notices and verify the supported Evergreen
+Runtime distribution model before an external release.
+
+## Inno Setup
+
+The Windows installer is built with Inno Setup 6.7.3. The compiler reports itself
+as non-commercial-use-only unless an applicable commercial licence has been
+purchased. Confirm that licence before any commercial distribution.
 
 ## Rhino and Grasshopper
 

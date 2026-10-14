@@ -33,13 +33,14 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _analyzer_assets(analyzer_root: Path) -> tuple[Path, Path]:
+def _analyzer_assets(analyzer_root: Path) -> tuple[Path, Path, Path]:
     root = analyzer_root.expanduser().resolve()
     model = root / "ParkHaven_MVP.3dm"
     definition = root / "ParkHaven_MVP.ghx"
-    if not model.is_file() or not definition.is_file():
+    weather = root / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw"
+    if not model.is_file() or not definition.is_file() or not weather.is_file():
         raise ProjectError("De geverifieerde ParkHaven-analysebestanden ontbreken.")
-    return model, definition
+    return model, definition, weather
 
 
 def _context_asset(analyzer_root: Path) -> Path:
@@ -55,7 +56,7 @@ def prepare_run(projects_root: Path, project_id: str, analyzer_root: Path, runne
     if placement.get("approved") is not True:
         raise ProjectError("Keur eerst de plaatsing goed voordat u analyseert.")
 
-    context_model, definition = _analyzer_assets(analyzer_root)
+    context_model, definition, weather = _analyzer_assets(analyzer_root)
     directory = project_directory(projects_root, project_id)
     run_id = str(uuid.uuid4())
     run_dir = directory / "runs" / run_id
@@ -63,6 +64,9 @@ def prepare_run(projects_root: Path, project_id: str, analyzer_root: Path, runne
     data_dir.mkdir(parents=True)
     run_definition = run_dir / "ParkHaven_Analysis.ghx"
     shutil.copy2(definition, run_definition)
+    run_weather = run_dir / "weather" / weather.name
+    run_weather.parent.mkdir()
+    shutil.copy2(weather, run_weather)
     # Rhino only ever opens this immutable-input snapshot, not the project copy.
     run_model = run_dir / "design.3dm"
     shutil.copy2(directory / project["working"]["path"], run_model)
@@ -79,6 +83,7 @@ def prepare_run(projects_root: Path, project_id: str, analyzer_root: Path, runne
         "input_sha256": _sha256(run_model),
         "source_sha256": project["source"]["sha256"],
         "definition_sha256": _sha256(run_definition),
+        "weather_sha256": _sha256(run_weather),
         "context_sha256": _sha256(context_model),
         "application_version": "0.1.0",
         "integration": "rhino-plugin-v1",
@@ -136,21 +141,33 @@ def prepare_preview(projects_root: Path, project_id: str, analyzer_root: Path) -
     return job
 
 
+def _validated_plugin_path(path_value: str, load_mode: int) -> Path:
+    path = Path(path_value).expanduser().resolve()
+    if load_mode != 1:
+        raise ProjectError("De Rhino-plug-in is niet ingesteld om bij opstarten te laden. Herstel ParkHaven Studio.")
+    expected_value = os.environ.get("PARKHAVEN_EXPECTED_PLUGIN")
+    if expected_value and path != Path(expected_value).expanduser().resolve():
+        raise ProjectError("De Rhino-plug-inregistratie verwijst niet naar deze ParkHaven-installatie. Herstel ParkHaven Studio.")
+    if not path.is_file():
+        raise ProjectError("De geregistreerde ParkHaven Rhino-plug-in ontbreekt. Herstel ParkHaven Studio.")
+    return path
+
+
 def _registered_plugin() -> Path:
     try:
         import winreg
 
+        root_key = rf"Software\McNeel\Rhinoceros\8.0\Plug-ins\{PLUGIN_ID}"
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                            rf"Software\McNeel\Rhinoceros\8.0\Plug-ins\{PLUGIN_ID}\PlugIn") as key:
+                            root_key + r"\PlugIn") as key:
             path = Path(winreg.QueryValueEx(key, "FileName")[0])
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                            rf"Software\McNeel\Rhinoceros\8.0\Plug-ins\{PLUGIN_ID}") as key:
-            if winreg.QueryValueEx(key, "LoadMode")[0] != 1:
-                raise OSError("Plug-in laadt niet bij opstarten.")
-        if path.is_file():
-            return path
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, root_key) as key:
+            load_mode = winreg.QueryValueEx(key, "LoadMode")[0]
+        return _validated_plugin_path(str(path), load_mode)
     except (ImportError, OSError):
         pass
+    if os.environ.get("PARKHAVEN_EXPECTED_PLUGIN"):
+        raise ProjectError("De geinstalleerde ParkHaven Rhino-plug-in ontbreekt. Herstel ParkHaven Studio.")
     raise ProjectError("Bouw en registreer eerst de ParkHaven Rhino-plug-in; zie docs/RHINO_PLUGIN.md.")
 
 
