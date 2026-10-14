@@ -46,6 +46,40 @@ trust remains available for private deployments. Live provider acceptance still
 requires an ephemeral user credential and an exact supported model ID.
 The complete desktop v1 remains in development.
 
+### Coloured volumes and site-aware advice guard, 2026-10-14
+
+- Replaced projected point labels in report images with deterministic design-mass
+  colours and a compact legend: Volume A blue, Volume B orange and Volume C purple.
+  The Grasshopper exporter writes the colours into `PH_DESIGN`, so they remain stable
+  in the viewer and all four controlled captures instead of being report overlays.
+- Model-evidence captures now hide shadow, UTCI and pile meshes while retaining the
+  design, façades, park target, reference buildings and pinned aerial. This keeps the
+  masses legible; calculated analysis layers remain available in the interactive
+  viewer and metric tables.
+- Capture manifests require `volume-colors-v1`, preventing a colour legend from being
+  paired with older monochrome evidence. Existing runs must be analysed and captured
+  again before producing the new report layout.
+- Repository review found no verified tunnel alignment, depth, protection envelope,
+  plot or access dataset. The AI evidence now states that absence explicitly. Until an
+  authoritative constraint package is added, the prompt and server validator reject
+  shifting, setting back, widening or rotating a mass and limit suggestions to tests
+  that stay within the current footprint. Older advice is omitted by the new
+  `site-constraints-v1` policy rather than continuing to show unsafe relocation text.
+- Real `massa fase 2.3dm` acceptance passed with meter interpretation. The four 768 x
+  512 captures show three distinct coloured masses without marker labels or analysis-
+  mesh obstruction. Baseline Rhino numerical acceptance and stable volume-colour
+  checks pass; app regression is **127 tests**, analyzer regression is **25 tests**,
+  Edge/WebGL capture passes without JavaScript exceptions, and desktop Release builds
+  with zero warnings/errors.
+- Rebuilt and silently installed tester acceptance passes, including the installed
+  payload smoke test. Unsigned artifact:
+  `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, **65,376,804 bytes**, SHA-256
+  **f9539ce7c682b4bf7dd02c41d3cffa4037b1db64f1d82848a15cb9114177805a**.
+- Final A4 PDF acceptance used the real `massa fase 2` colour captures and produced
+  a two-page report with the Volume A/B/C legend, no point labels, and the explicit
+  unavailable tunnel/plot/access limitation. The advice text remained within the
+  current footprint.
+
 ### DeepSeek, native PDF and integrity hardening, 2026-10-14
 
 - Added an official DeepSeek compatibility profile that disables thinking and

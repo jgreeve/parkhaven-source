@@ -97,6 +97,7 @@ class ViewEvidenceRequest(BaseModel):
     scene_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     geometry_summary_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     site_context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    render_style: Literal["volume-colors-v1"]
     views: list[ViewCapture] = Field(min_length=4, max_length=4)
 
 

@@ -422,6 +422,7 @@ window.addEventListener("parkhaven-viewer-capture-result", async event => {
         scene_sha256: activeRun.scene_sha256,
         geometry_summary_sha256: activeRun.geometry_summary.sha256,
         site_context_sha256: result.siteContextSha256,
+        render_style: result.renderStyle,
         views: result.views,
       }),
     });

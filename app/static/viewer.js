@@ -28,6 +28,7 @@ const colors = {PH_DESIGN: 0xd7a35d, PH_VISUAL_ONLY: 0xa777b2, PH_FACADES: 0x548
   PH_TARGET: 0x52966a, REFERENCE_CONTEXT: 0xb4b9b8, ANALYSIS_SHADOW: 0x526f91,
   ANALYSIS_UTCI: 0xd9683f, ANALYSIS_PILES: 0x4c4037};
 const analysisLayers = new Set(["ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"]);
+const volumeRenderStyle = "volume-colors-v1";
 
 function startViewer() {
   const renderer = new THREE.WebGLRenderer({antialias: true});
@@ -354,6 +355,7 @@ function startViewer() {
     }
     if (kind === "preview" && data.kind !== "placement_preview") throw new Error("Dit bestand is geen plaatsingspreview.");
     const group = new THREE.Group();
+    group.userData.designRenderStyle = data.design_render_style;
     const seen = new Set();
     let triangleCount = 0;
     try {
@@ -375,8 +377,12 @@ function startViewer() {
         geometry.setIndex(triangles);
         geometry.computeVertexNormals();
         const vertexColors = layer.vertex_colors;
+        if (layer.name === "PH_DESIGN" && data.design_render_style === volumeRenderStyle && vertexColors === undefined)
+          throw new Error("Gekleurde volumeweergave mist PH_DESIGN-vertexkleuren.");
         if (vertexColors !== undefined) {
-          if (!["ANALYSIS_SHADOW", "ANALYSIS_UTCI"].includes(layer.name)
+          const supported = ["ANALYSIS_SHADOW", "ANALYSIS_UTCI"].includes(layer.name)
+            || (layer.name === "PH_DESIGN" && data.design_render_style === volumeRenderStyle);
+          if (!supported
               || !Array.isArray(vertexColors) || vertexColors.length !== vertices.length
               || !vertexColors.every(value => Number.isInteger(value) && value >= 0 && value <= 255))
             throw new Error("Ongeldige RGB-vertexkleuren.");
@@ -628,6 +634,8 @@ function startViewer() {
     const all = layerBounds(["PH_DESIGN", "PH_FACADES", "PH_TARGET", "REFERENCE_CONTEXT",
       "ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"]);
     if (!aerialManifest || !aerialMesh) throw new Error("De vaste PDOK-luchtfotocontext is nog niet geladen.");
+    if (model.userData.designRenderStyle !== volumeRenderStyle)
+      throw new Error("Deze analyse bevat nog geen gekleurde volumeweergave. Voer de analyse opnieuw uit.");
     all.expandByObject(aerial);
     if (design.isEmpty() || all.isEmpty()) throw new Error("De runscene bevat onvoldoende geometrie voor modelbeelden.");
     const designCenter = design.getCenter(new THREE.Vector3());
@@ -640,7 +648,8 @@ function startViewer() {
       {id: "facade-side", box: captureBox, direction: referenceDirection("PH_FACADES", designCenter)},
       {id: "park-side", box: captureBox, direction: referenceDirection("PH_TARGET", designCenter)},
     ];
-    const visibleLayers = [...model.children.filter(layer => layer.children.length > 0).map(layer => layer.name), "PDOK_AERIAL"].sort();
+    const visibleLayers = [...model.children.filter(layer => layer.children.length > 0 && !analysisLayers.has(layer.name))
+      .map(layer => layer.name), "PDOK_AERIAL"].sort();
     const visibility = model.children.map(layer => [layer, layer.visible]);
     const aerialWasVisible = aerial.visible;
     const gizmoWasVisible = gizmo.visible;
@@ -649,7 +658,7 @@ function startViewer() {
     captureRenderer.setSize(768, 512, false);
     captureRenderer.setClearColor(0xe9efeb);
     try {
-      model.children.forEach(layer => { layer.visible = layer.children.length > 0; });
+      model.children.forEach(layer => { layer.visible = layer.children.length > 0 && !analysisLayers.has(layer.name); });
       aerial.visible = true;
       gizmo.visible = false;
       scene.updateMatrixWorld(true);
@@ -685,6 +694,7 @@ function startViewer() {
       const views = captureViews(request);
       window.dispatchEvent(new CustomEvent("parkhaven-viewer-capture-result", {detail: {
         requestId: request.requestId, views, siteContextSha256: aerialManifest.manifest_sha256,
+        renderStyle: model.userData.designRenderStyle,
       }}));
     } catch (error) {
       window.dispatchEvent(new CustomEvent("parkhaven-viewer-capture-result", {detail: {

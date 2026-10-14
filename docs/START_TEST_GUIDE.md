@@ -183,7 +183,9 @@ This does not permit unknown evidence references.
 
 The app labels the largest analytical masses as **Volume A**, **Volume B**, etc. and
 derives their relative left/centre/right position separately for each controlled
-camera. A valid new advice response contains exactly three prioritized design actions.
+camera. Captures colour those masses consistently and the report uses a matching
+legend instead of projected point labels. A valid new advice response contains exactly
+three prioritized design actions.
 Each action must identify a labelled volume, geometric operation, view-anchored
 direction, concrete test magnitude, design goal, hypothesized effect, trade-off and
 Grasshopper metrics to recalculate. Vague actions and invented evidence are rejected.
@@ -192,12 +194,18 @@ the app adds that view anchor deterministically. Empty, truncated, refused and m
 provider responses are reported in readable terms. Invalid replies are not retried
 automatically, so a slow or billed provider is called only once per request.
 
+No verified plot, access, tunnel or other infrastructure envelope is currently
+available. The evidence package tells the provider this explicitly, and the server
+rejects horizontal relocation, footprint expansion and rotation advice until an
+authoritative constraint package is installed. Aerial imagery alone is not treated as
+proof of a subsurface tunnel or legal clearance.
+
 The printable report presents these actions first. Raw UUIDs and metric field names
 are replaced by readable labels; technical provenance is separated from the main
 advice, and the four evidence images are included as a compact gallery. Older saved
-advice remains visible as general advice but only a new request can produce the
-structured design-action cards. Volume A/B/C markers are projected onto each report
-image so the referenced masses remain identifiable.
+advice from before the site-constraint policy is omitted. Rerun the analysis, capture
+the views and request new advice to produce the structured action cards and coloured
+Volume A/B/C legend.
 
 The viewer should show **PDOK-luchtfoto** beneath the model and the attribution
 `Bron: Beeldmateriaal Nederland, via PDOK`. Use the checkbox and **Dekking** slider

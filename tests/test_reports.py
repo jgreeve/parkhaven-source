@@ -23,7 +23,7 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
         (data_dir / f"{view_id}.png").write_bytes(image)
         views.append({"id": view_id, "path": f"{view_id}.png", "bytes": len(image),
                       "image_sha256": hashlib.sha256(image).hexdigest()})
-    manifest_value = {"capture_id": "current", "views": views}
+    manifest_value = {"capture_id": "current", "render_style": "volume-colors-v1", "views": views}
     for field, (_, content) in artifacts.items():
         manifest_value[field] = hashlib.sha256(content).hexdigest()
     manifest = (json.dumps(manifest_value) + "\n").encode()
@@ -33,9 +33,13 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
     advice = {
         "samenvatting": "The sight_pct result defines the main visibility constraint.", "model": "vision-model",
         "visual_evidence_used": False, "model_view_evidence_used": True, "output_language": "en",
+        "advice_policy_version": "site-constraints-v1",
         "evidence_provenance": provenance,
-        "design_elements": [{"element_id": "volume-a", "label": "Volume A", "object_id": "source:one",
-                             "image_coordinates_pct": {"overview": {"x": 45.5, "y": 52.0}}}],
+        "design_elements": [
+            {"element_id": "volume-a", "label": "Volume A", "object_id": "source:one"},
+            {"element_id": "volume-b", "label": "Volume B", "object_id": "source:two"},
+            {"element_id": "volume-c", "label": "Volume C", "object_id": "source:three"},
+        ],
         "berekeningsbewijs": [{"tekst": "Grasshopper reports the gross floor area.", "metric_fields": ["bvo_m2"]}],
         "visuele_observaties": [{"tekst": "The mass is visible.", "view_ids": ["overview"],
                                     "onzekerheid": "Visual evidence only."}],
@@ -68,11 +72,13 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
     assert "one weather condition" in report and "not a year-round solar-access or thermal-comfort study" in report
     assert "Foundation screening" in report and "42" in report and "86.0%" in report
     assert "Not a ground investigation, foundation design, structural verification, or construction design" in report
+    assert "No verified plot, access, tunnel, or other infrastructure envelope is available" in report
     assert "Analysis from 2 October 2026, 00:00 · Completed" in report
     assert "Images are shown for human review but were not sent to AI" in report
     assert "run-1" not in report and "sight_pct" not in report
-    assert "class='volume-marker' style='left:45.5%;top:52.0%'" in report
-    assert "class='volume-label' style='top:0px'" in report
+    assert "Volume colour legend" in report
+    assert "background:#2f80ed" in report and "background:#f2994a" in report and "background:#9b51e0" in report
+    assert "volume-marker" not in report and "volume-label" not in report
     assert "@page{size:A4;margin:11mm}" in report
     assert "@media print" in report and "grid-template-columns:repeat(3,1fr)" in report
     assert "parkhaven.savePdf" in report and "window.print()" in report
@@ -92,6 +98,12 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
     assert "Widen Volume A to the right." not in stale_report
     assert "not linked to the current model-view evidence" in stale_report
     results_path.write_bytes(results_image)
+
+    advice.pop("advice_policy_version")
+    (run_dir / "ai-advice.json").write_text(json.dumps(advice), encoding="utf-8")
+    old_policy_report = build_report({"name": "Test"}, job)
+    assert "Widen Volume A to the right." not in old_policy_report
+    assert "not linked to the current model-view evidence" in old_policy_report
 
 
 def test_report_keeps_legacy_results_compact(tmp_path):

@@ -52,8 +52,10 @@ def main():
     context_public = {key: value for key, value in context.items() if key != "image_filename"}
     context_public.update(manifest_sha256=hashlib.sha256(context_raw).hexdigest(), image_url="/api/site-context/aerial.jpg")
     viewer_assets = ROOT.parent / "ParkHaven_Analyzer_App_v0.2/app/static/vendor/three"
-    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z", "timestamp": "2026-09-30T12:00:00Z",
-              "layers": [{"name": "PH_DESIGN", "vertices": [0, 0, 0, 10, 0, 0, 0, 10, 9], "triangles": [0, 1, 2]},
+    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z", "design_render_style": "volume-colors-v1",
+              "timestamp": "2026-09-30T12:00:00Z",
+              "layers": [{"name": "PH_DESIGN", "vertices": [0, 0, 0, 10, 0, 0, 0, 10, 9], "triangles": [0, 1, 2],
+                          "vertex_colors": [47, 128, 237, 47, 128, 237, 47, 128, 237]},
                          {"name": "PH_FACADES", "vertices": [-10, -20, 0, 10, -20, 0, 0, -20, 10], "triangles": [0, 1, 2]},
                          {"name": "PH_TARGET", "vertices": [-10, 20, 0, 10, 20, 0, 0, 20, 10], "triangles": [0, 1, 2]},
                          {"name": "REFERENCE_CONTEXT", "vertices": [-20, -20, 0, 20, -20, 0, 0, 20, 0], "triangles": [0, 1, 2]},
@@ -63,6 +65,7 @@ def main():
                           "triangles": [0, 1, 2], "vertex_colors": [45, 125, 210, 230, 55, 40, 45, 125, 210]},
                          {"name": "ANALYSIS_PILES", "vertices": [4, 4, 0, 5, 4, 0, 4, 5, 1], "triangles": [0, 1, 2]}]}
     preview_scene = {"schema_version": 1, "kind": "placement_preview", "units": "meters", "up_axis": "Z",
+                      "design_render_style": "volume-colors-v1",
                       "layers": [*scene["layers"][:4],
                                 {"name": "PH_VISUAL_ONLY", "vertices": [1, 1, 0, 2, 1, 0, 1, 2, 0],
                                  "triangles": [0, 1, 2]}]}
@@ -120,10 +123,12 @@ def main():
             values = route.request.post_data_json
             assert values["scene_sha256"] == "a" * 64 and values["geometry_summary_sha256"] == "b" * 64
             assert values["site_context_sha256"] == context_public["manifest_sha256"]
+            assert values["render_style"] == "volume-colors-v1"
             assert [view["id"] for view in values["views"]] == ["top", "overview", "facade-side", "park-side"]
             assert all(view["width"] == 768 and view["height"] == 512 for view in values["views"])
             assert all(view["image_data_url"].startswith("data:image/png;base64,iVBOR") for view in values["views"])
-            assert all("PDOK_AERIAL" in view["visible_layers"] for view in values["views"])
+            assert all(set(view["visible_layers"]) == {"PH_DESIGN", "PH_FACADES", "PH_TARGET", "REFERENCE_CONTEXT", "PDOK_AERIAL"}
+                       for view in values["views"])
             assert values["views"][2]["camera_position"] != values["views"][3]["camera_position"]
             captured_views.extend(values["views"])
             projects[0]["runs"][0]["view_evidence_available"] = True
@@ -252,8 +257,8 @@ def main():
             expect(page.locator("#ai-form button")).to_be_enabled()
             expect(page.locator("#ai-status")).to_contain_text("gereed voor AI-advies")
             assert len(captured_views) == 4
-            assert all({"ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"}
-                       <= set(view["visible_layers"]) for view in captured_views)
+            assert all(not any(layer.startswith("ANALYSIS_") for layer in view["visible_layers"])
+                       for view in captured_views)
             page.locator("#show-preview").click()
             expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "5")
             page.locator("#view-top").click()
