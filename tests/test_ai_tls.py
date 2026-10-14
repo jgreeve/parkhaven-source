@@ -10,21 +10,31 @@ import trustme
 
 from app import ai
 
+OBJECT_ID = "source:12345678-1234-1234-1234-123456789abc"
+ELEMENT = {"element_id": "volume-a", "label": "Volume A", "object_id": OBJECT_ID}
 
 EVIDENCE = {
-    "structured": {"berekende_resultaten": {"bvo_m2": 1000}},
+    "structured": {"calculated_results": {"bvo_m2": 1000}},
     "images": [{"id": view_id, "data_url": "data:image/png;base64,AA=="}
                for view_id in ("top", "overview", "facade-side", "park-side")],
-    "object_ids": set(), "view_ids": {"top", "overview", "facade-side", "park-side"},
+    "object_ids": {OBJECT_ID}, "view_ids": {"top", "overview", "facade-side", "park-side"},
+    "design_elements": [ELEMENT], "element_ids": {"volume-a"},
     "metric_fields": {"bvo_m2"}, "provenance": {"view_evidence_sha256": "1" * 64},
 }
 
 
-VALID_REVIEW = {"samenvatting": "TLS werkt.",
-                "berekeningsbewijs": [{"tekst": "BVO.", "metric_fields": ["bvo_m2"]}],
-                "visuele_observaties": [],
-                "aanbevelingen": [{"tekst": "Behouden.", "evidence_refs": ["metric:bvo_m2"]}],
-                "beperkingen": ["Geen noordbewijs."]}
+VALID_REVIEW = {"samenvatting": "The secure review connection works.",
+                "berekeningsbewijs": [{"tekst": "Grasshopper reports the floor area.", "metric_fields": ["bvo_m2"]}],
+                "visuele_observaties": [{"tekst": "The volume is visible.", "view_ids": ["overview"],
+                                           "object_ids": [], "onzekerheid": "Visual evidence only."}],
+                "ontwerpacties": [{
+                    "prioriteit": priority, "element_id": "volume-a", "ingreep": operation,
+                    "richting": "to the right in the overview", "testomvang": "Test a 5-10% relative change.",
+                    "ontwerpdoel": "Improve cohesion.", "verwacht_effect": "This may strengthen the cluster.",
+                    "afweging": "This could reduce spacing.", "controle_metric_fields": ["bvo_m2"],
+                    "evidence_refs": ["view:overview", "object:" + OBJECT_ID, "metric:bvo_m2"],
+                } for priority, operation in enumerate(("widen", "raise", "shift"), 1)],
+                "beperkingen": ["Orientation is not verified."]}
 
 
 @pytest.fixture
@@ -89,7 +99,7 @@ def review(endpoint):
 def test_private_ca_and_pin_accept_ip_despite_certificate_name(private_server):
     endpoint, received = private_server()
     result = review(endpoint)
-    assert result["samenvatting"] == "TLS werkt."
+    assert result["samenvatting"] == "The secure review connection works."
     assert received[0]["path"] == "/spark/v1/chat/completions"
     assert received[0]["key"] == "Bearer dummy-test-key"
     assert received[0]["payload"]["model"] == "test-model"
@@ -130,5 +140,21 @@ def test_redirect_cannot_send_api_key_to_another_origin(private_server):
 def test_invalid_pin_configuration_does_not_disable_verification(private_server):
     endpoint, received = private_server(pin="not-a-fingerprint")
     with pytest.raises(ai.AiError, match="ongeldige SHA-256"):
+        review(endpoint)
+    assert received == []
+
+
+def test_ca_file_cannot_escape_configuration_directory(private_server, tmp_path, monkeypatch):
+    endpoint, received = private_server()
+    config_dir = tmp_path / "nested"
+    config_dir.mkdir()
+    config = config_dir / "ai-trust.json"
+    config.write_text(json.dumps({"endpoints": [{
+        "origin": endpoint.rsplit("/spark/v1", 1)[0],
+        "ca_file": "../ca.pem",
+        "certificate_sha256": "0" * 64,
+    }]}), encoding="utf-8")
+    monkeypatch.setenv("PARKHAVEN_AI_TRUST_CONFIG", str(config))
+    with pytest.raises(ai.AiError, match="buiten de configuratiemap"):
         review(endpoint)
     assert received == []

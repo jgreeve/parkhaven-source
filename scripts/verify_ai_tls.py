@@ -21,7 +21,16 @@ def main():
     try:
         with open_ai_request(request.Request(url, headers={"Accept": "application/json"}), timeout=20) as response:
             print(f"TLS verified; GET {url}: HTTP {response.status}")
-            payload = json.loads(response.read().decode("utf-8"))
+            body = response.read()
+            try:
+                payload = json.loads(body.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                content_type = response.headers.get_content_type()
+                print(
+                    f"Endpoint returned {content_type}, not a JSON model response. "
+                    "Use the direct OpenAI-compatible API endpoint.", file=sys.stderr,
+                )
+                return 1
             print("Model IDs:", [model.get("id") for model in payload.get("data", [])])
     except error.HTTPError as exc:
         print(f"TLS verified; GET {url}: HTTP {exc.code}")
@@ -33,4 +42,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
