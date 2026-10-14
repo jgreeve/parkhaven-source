@@ -23,6 +23,7 @@ class AiError(ValueError):
 AI_TIMEOUT_SECONDS = 120
 MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
 MAX_EVIDENCE_JSON_BYTES = 20_000_000
+ADVICE_POLICY_VERSION = "site-constraints-v1"
 SYSTEM_PROMPT = """/no_think
 Return one JSON object matching response_schema. No Markdown, reasoning, or preamble.
 Write concise English and use only supplied IDs and evidence.
@@ -31,6 +32,10 @@ Rules:
 - Grasshopper values are authoritative: quote, never recalculate or infer causation.
 - Labelled dimensions and view projections support relative spatial observations only;
   they do not prove appearance, quantities, orientation, plot, ground, or performance.
+- Treat site_constraints as hard boundaries on the advice. When horizontal_moves_allowed
+  is false, do not use shift, set_back, widen, or rotate: suggest tests that stay within
+  the current footprint. Never claim clearance from tunnels or other infrastructure
+  when transport_infrastructure is unavailable.
 - Never expose raw IDs, schema keys, or layer names in prose.
 - Use view-relative directions unless evidence explicitly verifies another meaning.
 - Do not invent dimensions. Prefer a 5-10% sensitivity range; metres are allowed only
@@ -203,6 +208,7 @@ def load_model_evidence(job: dict[str, Any]) -> dict[str, Any]:
         "weather_sha256": _sha256(paths["weather"]),
         "definition_sha256": job.get("definition_sha256"),
         "site_context_sha256": site_context["manifest_sha256"],
+        "render_style": "volume-colors-v1",
     }
     if any(manifest.get(key) != value for key, value in expected.items()):
         raise AiError("View-evidence is verouderd of hoort niet bij deze run en plaatsing.")
@@ -263,6 +269,12 @@ def load_model_evidence(job: dict[str, Any]) -> dict[str, Any]:
             "ground": manifest.get("ground_status"),
             "site_alignment": site_context["alignment"].get("status"),
         },
+        "site_constraints": {
+            "status": "unavailable",
+            "transport_infrastructure": "unavailable",
+            "horizontal_moves_allowed": False,
+            "reason": "No verified plot, access, tunnel, or other infrastructure envelope is available.",
+        },
     }
     encoded = json.dumps(structured, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     if len(encoded) > 1_000_000:
@@ -275,6 +287,7 @@ def load_model_evidence(job: dict[str, Any]) -> dict[str, Any]:
         "metric_fields": set(metrics),
         "design_elements": design_elements,
         "element_ids": {item["element_id"] for item in design_elements},
+        "horizontal_moves_allowed": False,
         "provenance": {
             "view_evidence_sha256": _sha256(paths["views"]),
             **{key: expected[key] for key in ("scene_sha256", "geometry_summary_sha256", "results_sha256", "weather_sha256", "site_context_sha256")},
@@ -401,6 +414,11 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
     if not 1 <= len(calculations) <= 3 or not 1 <= len(observations) <= 3 or not 1 <= len(limitations) <= 3:
         raise AiError("AI output must contain 1-3 findings, observations, and limitations.")
     summary = _reader_text(review["samenvatting"], "samenvatting", 450)
+    unsupported_move = re.compile(
+        r"\b(?:shift(?:s|ed|ing)?|mov(?:e|es|ed|ing|ements?)|relocat\w*|set\s*back|setback|backwards?|outwards?|footprint\s+expansion)\b",
+        re.IGNORECASE)
+    if not evidence.get("horizontal_moves_allowed", True) and unsupported_move.search(summary):
+        raise AiError("AI-samenvatting stelt een niet-geverifieerde horizontale verplaatsing voor.")
     limitations = [_reader_text(value, "beperkingen", 220) for value in limitations]
     normalized_calculations = []
     for item in calculations:
@@ -455,6 +473,8 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
                 or priority in priorities or element is None or operation not in OPERATIONS
                 or None in (direction, magnitude, goal, effect, tradeoff)):
             raise AiError("Ontwerpactie mist prioriteit, volume, ingreep, richting, testomvang, doel, effect of afweging.")
+        if not evidence.get("horizontal_moves_allowed", True) and operation in {"shift", "set_back", "widen", "rotate"}:
+            raise AiError("Ontwerpactie vergroot of verplaatst de footprint terwijl plot- en infrastructuurconstraints ontbreken.")
         direction = re.sub(rf"\b{re.escape(element['label'])}\b", "", direction,
                            flags=re.IGNORECASE).strip(" ,.-")
         direction = _reader_text(direction, "ontwerpacties.richting", 120)
@@ -462,6 +482,9 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
         goal = _reader_text(goal, "ontwerpacties.ontwerpdoel", 180)
         effect = _reader_text(effect, "ontwerpacties.verwacht_effect", 180)
         tradeoff = _reader_text(tradeoff, "ontwerpacties.afweging", 180)
+        if (not evidence.get("horizontal_moves_allowed", True)
+                and any(unsupported_move.search(text) for text in (goal, effect, tradeoff))):
+            raise AiError("Ontwerpactie stelt in de toelichting een niet-geverifieerde horizontale verplaatsing voor.")
         checks = _canonical_ids(_reference_list(item, "controle_metric_fields", "controle_metric_field"), "metric", evidence)
         if not checks or not set(checks) <= evidence["metric_fields"]:
             raise AiError("Ontwerpactie bevat een onbekende controlemetric.")
@@ -472,7 +495,11 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
         if required_object_ref not in refs or not any(ref.startswith("view:") for ref in refs):
             raise AiError("Ontwerpactie moet het gekozen volume en minstens één modelbeeld onderbouwen.")
         direction_lower = direction.lower()
-        spatial_terms = ("left", "right", "toward", "away", "up", "down", "above", "below",
+        if (not evidence.get("horizontal_moves_allowed", True)
+                and re.search(r"\b(?:left|right|backwards?|forwards?|outwards?|away|links|rechts|achteruit|vooruit|buitenwaarts)\b",
+                              direction_lower, re.IGNORECASE)):
+            raise AiError("Ontwerpactie bevat een horizontale richting terwijl plot- en infrastructuurconstraints ontbreken.")
+        spatial_terms = ("left", "right", "toward", "away", "inward", "up", "down", "above", "below",
                          "centre", "center", "view", "volume", "facade", "park",
                          "links", "rechts", "richting", "omhoog", "omlaag", "voor", "achter")
         if not any(term in direction_lower for term in spatial_terms):
@@ -626,6 +653,9 @@ def _field_overview(value: Any) -> str:
 
 
 def request_review(*, endpoint: str, api_key: str, model: str, evidence: dict[str, Any], design_goal: str) -> dict[str, Any]:
+    allowed_operations = ("widen|raise|lower|shift|set_back|open|split|narrow|rotate"
+                          if evidence.get("horizontal_moves_allowed", True)
+                          else "raise|lower|open|split|narrow")
     response_schema = {
         "samenvatting": "one short English sentence",
         "berekeningsbewijs": [{"tekst": "measured finding", "metric_fields": ["metric ID"]}],
@@ -634,7 +664,7 @@ def request_review(*, endpoint: str, api_key: str, model: str, evidence: dict[st
         "ontwerpacties": [{
             "prioriteit": "integer 1, 2, or 3; use each once",
             "element_id": "design element ID",
-            "ingreep": "widen|raise|lower|shift|set_back|open|split|narrow|rotate",
+            "ingreep": allowed_operations,
             "richting": "short view-relative direction",
             "testomvang": "5-10% relative sensitivity range, not an optimum",
             "ontwerpdoel": "short design objective",
@@ -657,5 +687,6 @@ def request_review(*, endpoint: str, api_key: str, model: str, evidence: dict[st
         raise AiError(f"AI-provider gaf geen bruikbaar gestructureerd advies: {exc}") from exc
     validated.update(provider_endpoint=endpoint, model=model, evidence_provenance=evidence["provenance"],
                       design_elements=evidence["design_elements"], visual_evidence_used=False,
-                      model_view_evidence_used=True, output_language="en")
+                      model_view_evidence_used=True, output_language="en",
+                      advice_policy_version=ADVICE_POLICY_VERSION)
     return validated

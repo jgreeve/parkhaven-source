@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .ai import build_design_elements
+from .ai import ADVICE_POLICY_VERSION, build_design_elements
 
 
 METRIC_LABELS = {
@@ -30,6 +30,8 @@ METRIC_LABELS = {
 }
 VIEW_LABELS = {"top": "Top view", "overview": "Overview",
                "facade-side": "Facade-side view", "park-side": "Park-side view"}
+VOLUME_COLORS = ("#2f80ed", "#f2994a", "#9b51e0", "#27ae60",
+                 "#eb5757", "#56ccf2", "#f2c94c", "#6fcf97")
 MAX_REPORT_JSON_BYTES = 20 * 1024 * 1024
 MAX_REPORT_SCENE_BYTES = 100 * 1024 * 1024
 MAX_REPORT_IMAGE_BYTES = 5 * 1024 * 1024
@@ -166,22 +168,18 @@ def _gallery(data_dir: Path, manifest: Any, elements: Any) -> str:
         if not path.is_relative_to(data_dir.resolve()) or not path.is_file():
             continue
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        label_data = []
-        for element in elements if isinstance(elements, list) else []:
-            coordinates = (element.get("image_coordinates_pct") or element.get("beeldcoordinaten_pct") or {}).get(view["id"]) if isinstance(element, dict) else None
-            if not isinstance(coordinates, dict) or not isinstance(element.get("label"), str):
-                continue
-            x, y = coordinates.get("x"), coordinates.get("y")
-            if not all(isinstance(value, (int, float)) for value in (x, y)):
-                continue
-            label_data.append((element["label"], max(3, min(97, x)), max(3, min(97, y))))
-        labels = []
-        for index, (label, x, y) in enumerate(label_data):
-            offset = round((index - (len(label_data) - 1) / 2) * 36)
-            side = " label-left" if x > 68 else ""
-            labels.append(f"<span class='volume-marker' style='left:{x}%;top:{y}%'><span class='volume-label{side}' style='top:{offset}px'>{html.escape(label)}</span></span>")
-        images.append(f"<figure><div class='image-stage'><img src='data:image/png;base64,{encoded}' alt='{VIEW_LABELS[view['id']]}'>{''.join(labels)}</div><figcaption>{VIEW_LABELS[view['id']]}</figcaption></figure>")
-    return f"<div class='gallery'>{''.join(images)}</div>" if images else ""
+        images.append(f"<figure><div class='image-stage'><img src='data:image/png;base64,{encoded}' alt='{VIEW_LABELS[view['id']]}'></div><figcaption>{VIEW_LABELS[view['id']]}</figcaption></figure>")
+    if not images:
+        return ""
+    legend = ""
+    if manifest.get("render_style") == "volume-colors-v1" and isinstance(elements, list):
+        entries = []
+        for index, element in enumerate(elements[:len(VOLUME_COLORS)]):
+            if isinstance(element, dict) and isinstance(element.get("label"), str):
+                entries.append(f"<span><i style='background:{VOLUME_COLORS[index]}'></i>{html.escape(element['label'])}</span>")
+        if entries:
+            legend = f"<div class='volume-legend' aria-label='Volume colour legend'>{''.join(entries)}</div>"
+    return legend + f"<div class='gallery'>{''.join(images)}</div>"
 
 
 def _validated_manifest(data_dir: Path, manifest_path: Path, provenance: dict[str, Any]) -> dict[str, Any] | None:
@@ -235,13 +233,13 @@ def build_report(project: dict[str, Any], job: dict[str, Any]) -> str:
         current_hash = (_sha256(manifest_path) if manifest_path.is_file()
                         and manifest_path.stat().st_size <= 2_000_000 else None)
         grounded = (advice.get("visual_evidence_used") is True or advice.get("model_view_evidence_used") is True) \
-            and provenance.get("view_evidence_sha256") == current_hash
+            and provenance.get("view_evidence_sha256") == current_hash \
+            and advice.get("advice_policy_version") == ADVICE_POLICY_VERSION
         manifest = _validated_manifest(data_dir, manifest_path, provenance) if grounded else None
         grounded = grounded and manifest is not None
         if grounded and advice.get("output_language") == "en":
             elements = advice.get("design_elements") if isinstance(advice.get("design_elements"), list) else []
-            if not elements or not any((item.get("image_coordinates_pct") or item.get("beeldcoordinaten_pct"))
-                                       for item in elements if isinstance(item, dict)):
+            if not elements:
                 try:
                     geometry = json.loads((data_dir / "geometry-summary.json").read_text(encoding="utf-8-sig"))
                     elements = build_design_elements(geometry.get("objects", []), manifest.get("views", []))
@@ -259,7 +257,7 @@ def build_report(project: dict[str, Any], job: dict[str, Any]) -> str:
 <div class='support-grid'><div><h2>Measured findings</h2><ul class='evidence-list'>{_calculation_items(advice.get('berekeningsbewijs'))}</ul></div>
 <div><h2>Visual observations</h2><ul class='evidence-list'>{_observation_items(advice.get('visuele_observaties'))}</ul></div></div>
 <div class='gallery-section'><h2>Model views used</h2>{_gallery(data_dir, manifest, elements)}</div>
-<aside class='limits'><h2>Limitations and method</h2><ul>{limits}<li>Climate screening covers one weather condition; it is not a year-round solar-access or thermal-comfort study.</li><li>Foundation screening is indicative. Not a ground investigation, foundation design, structural verification, or construction design.</li></ul>
+<aside class='limits'><h2>Limitations and method</h2><ul>{limits}<li>No verified plot, access, tunnel, or other infrastructure envelope is available. Horizontal relocation and footprint-expansion advice is therefore withheld.</li><li>Climate screening covers one weather condition; it is not a year-round solar-access or thermal-comfort study.</li><li>Foundation screening is indicative. Not a ground investigation, foundation design, structural verification, or construction design.</li></ul>
 <p>AI review using run metrics, labelled geometry, and verified view projections. Images are shown for human review but were not sent to AI. Effects are hypotheses; rerun every tested variant in Grasshopper.</p></aside></section>"""
         elif grounded:
             recommendations = "<section><h2>AI design review</h2><p class='notice'>The saved review uses the previous output language. Generate a new AI review to include it in this English report.</p></section>"
@@ -277,10 +275,10 @@ h1{{font-size:42px;line-height:1.05;margin:10px 0 14px}}h2{{font-size:22px;margi
 .summary{{font-size:20px;line-height:1.5;max-width:900px}}.actions{{display:grid;gap:14px}}.action-card{{border:1px solid var(--line);border-left:5px solid var(--accent);padding:18px 20px;break-inside:avoid}}
 .priority{{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}}.action-card p{{margin:5px 0}}.action-footer{{display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:12px}}
 .support-grid{{display:grid;grid-template-columns:1fr 1fr;gap:30px}}.evidence-list{{padding-left:20px}}.evidence-list li{{margin:10px 0}}.evidence-list span{{display:block}}.evidence-list small{{margin-top:3px}}
-.gallery-section h2,h2{{break-after:avoid}}.gallery{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}figure{{margin:0;border:1px solid var(--line);padding:7px;break-inside:avoid}}.image-stage{{position:relative;overflow:hidden}}figure img{{display:block;width:100%}}.volume-marker{{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%);border:2px solid white;border-radius:50%;background:var(--accent);box-shadow:0 1px 3px #0008}}.volume-label{{position:absolute;left:11px;transform:translateY(-50%);padding:2px 6px;border-radius:2px;background:rgba(23,58,50,.92);color:white;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px #0005}}.volume-label.label-left{{left:auto;right:11px}}figcaption{{font-size:12px;font-weight:700;padding:6px 2px 1px}}
+.gallery-section h2,h2{{break-after:avoid}}.volume-legend{{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 10px;font-size:12px;font-weight:700}}.volume-legend span{{display:flex;align-items:center;gap:6px}}.volume-legend i{{display:inline-block;width:14px;height:14px;border:1px solid #173a3266;border-radius:2px}}.gallery{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}figure{{margin:0;border:1px solid var(--line);padding:7px;break-inside:avoid}}.image-stage{{position:relative;overflow:hidden}}figure img{{display:block;width:100%}}figcaption{{font-size:12px;font-weight:700;padding:6px 2px 1px}}
 .limits,.notice{{background:#f7f3ed;border:1px solid #eadfce;padding:12px 18px;margin-top:18px}}.limits h2{{margin-top:0}}.limits p{{color:var(--muted);font-size:12px;margin-bottom:0}}p,li{{orphans:3;widows:3}}
 @media(max-width:760px){{.metrics,.support-grid,.gallery{{grid-template-columns:1fr}}.screening,.screening tbody,.screening tr,.screening th,.screening td{{display:block;width:100%}}.action-footer{{display:block}}}}
-@media print{{button,.print-help{{display:none}}body{{margin:0;max-width:none;padding:0;font-size:9.5pt;line-height:1.3}}h1{{font-size:25pt}}h2{{font-size:14pt;margin:12px 0 6px}}h3{{font-size:11pt;margin:2px 0 4px}}.section-kicker{{margin-top:18px}}.summary{{font-size:13pt;line-height:1.3;margin:5px 0 10px}}.metrics{{grid-template-columns:repeat(3,1fr);gap:7px}}.metric{{padding:7px}}.metric strong{{font-size:14pt}}.screening{{margin-top:8px}}.screening th,.screening td{{padding:5px 7px}}.screening span{{font-size:8pt}}.support-grid,.gallery{{grid-template-columns:1fr 1fr}}.actions{{gap:7px}}.action-card{{padding:6px 9px}}.action-card p{{margin:3px 0}}.action-footer{{font-size:8pt}}.gallery{{gap:6px}}figure{{padding:4px}}figure img{{max-height:50mm;object-fit:contain}}.volume-marker{{width:2.8mm;height:2.8mm}}.volume-label{{font-size:9pt}}.action-card,figure{{break-inside:avoid}}.limits{{break-inside:auto}}}}
+@media print{{button,.print-help{{display:none}}body{{margin:0;max-width:none;padding:0;font-size:9.5pt;line-height:1.3}}h1{{font-size:25pt}}h2{{font-size:14pt;margin:12px 0 6px}}h3{{font-size:11pt;margin:2px 0 4px}}.section-kicker{{margin-top:18px}}.summary{{font-size:13pt;line-height:1.3;margin:5px 0 10px}}.metrics{{grid-template-columns:repeat(3,1fr);gap:7px}}.metric{{padding:7px}}.screening{{margin-top:8px}}.screening th,.screening td{{padding:5px 7px}}.screening span{{font-size:8pt}}.support-grid,.gallery{{grid-template-columns:1fr 1fr}}.actions{{gap:7px}}.action-card{{padding:6px 9px}}.action-card p{{margin:3px 0}}.action-footer{{font-size:8pt}}.gallery{{gap:6px}}figure{{padding:4px}}figure img{{max-height:50mm;object-fit:contain}}.action-card,figure{{break-inside:avoid}}.limits{{break-inside:auto}}}}
 </style></head><body>
 <div class='toolbar'><strong>ParkHaven design review</strong><span class='print-help'>The desktop app exports a clean A4 PDF.</span><button id='save-pdf' onclick='savePdf()'>Save as PDF</button></div>
 <header><h1>{html.escape(project['name'])}</h1><p class='meta'>Analysis from {_analysis_date(job.get('created_at'))} · {html.escape({'completed': 'Completed', 'failed': 'Failed', 'running': 'Running'}.get(job.get('status'), 'Unknown'))}</p></header>

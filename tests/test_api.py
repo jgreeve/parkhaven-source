@@ -264,8 +264,10 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
     monkeypatch.setattr(main, "ANALYZER_ROOT", analyzer)
     job = client.post(f"/api/projects/{project_id}/analysis", json={"launch_rhino": False}).json()
     data_dir = Path(job["data_dir"])
-    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z", "layers": [
-        {"name": "PH_DESIGN", "vertices": [0, 0, 0], "triangles": [0, 0, 0]},
+    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z",
+             "design_render_style": "volume-colors-v1", "layers": [
+        {"name": "PH_DESIGN", "vertices": [0, 0, 0], "triangles": [0, 0, 0],
+         "vertex_colors": [47, 128, 237]},
         {"name": "REFERENCE_CONTEXT", "vertices": [1, 1, 0], "triangles": [0, 0, 0]},
         {"name": "ANALYSIS_SHADOW", "vertices": [0, 0, 0], "triangles": [0, 0, 0],
          "vertex_colors": [20, 80, 180]},
@@ -296,11 +298,12 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
         "scene_sha256": hashlib.sha256(scene_bytes).hexdigest(),
         "geometry_summary_sha256": hashlib.sha256(summary_bytes).hexdigest(),
         "site_context_sha256": client.get("/api/site-context").json()["manifest_sha256"],
+        "render_style": "volume-colors-v1",
         "views": [{
             "id": view_id, "image_data_url": image, "width": 768, "height": 512,
             "projection": "perspective", "fov_degrees": 40,
             "camera_position": [10, -10, 10], "camera_target": [0, 0, 0], "camera_up": [0, 0, 1],
-            "visible_layers": ["PH_DESIGN", "REFERENCE_CONTEXT", "ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES", "PDOK_AERIAL"],
+            "visible_layers": ["PH_DESIGN", "REFERENCE_CONTEXT", "PDOK_AERIAL"],
         } for view_id in ("top", "overview", "facade-side", "park-side")],
     }
     url = f"/api/projects/{project_id}/runs/{job['run_id']}/view-evidence"
@@ -311,6 +314,7 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
     assert manifest["scene_sha256"] == payload["scene_sha256"]
     assert manifest["results_sha256"] == hashlib.sha256(results_bytes).hexdigest()
     assert manifest["weather_sha256"] == job["weather_sha256"]
+    assert manifest["render_style"] == "volume-colors-v1"
     assert {view["id"] for view in manifest["views"]} == {"top", "overview", "facade-side", "park-side"}
     assert all((data_dir / view["path"]).read_bytes().startswith(b"\x89PNG") for view in manifest["views"])
     assert json.loads((data_dir / "view-evidence.json").read_text(encoding="utf-8"))["capture_id"] == manifest["capture_id"]
@@ -338,7 +342,8 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
         "bvo_m2", "sight_pct", "indicative_cost_eur", "shadow_mean_hours", "utci_mean_c", "pile_count_load"}
     assert "geometry" not in captured["evidence"]["structured"]
     assert set(captured["evidence"]["structured"]) == {
-        "calculated_results", "design_elements", "views", "evidence_status"}
+        "calculated_results", "design_elements", "views", "evidence_status", "site_constraints"}
+    assert captured["evidence"]["horizontal_moves_allowed"] is False
     assert client.get(f"/api/projects/{project_id}/runs/{job['run_id']}").json()["view_evidence_available"] is True
 
     first_image = data_dir / manifest["views"][0]["path"]
