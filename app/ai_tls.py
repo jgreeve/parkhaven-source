@@ -87,7 +87,13 @@ def build_ai_opener(url, *, config_path=None):
             fingerprint = profile["certificate_sha256"].lower()
             if not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
                 raise ValueError("ongeldige SHA-256-certificaatvingerafdruk")
-            ca_file = path.parent / profile["ca_file"]
+            ca_file = Path(profile["ca_file"])
+            if ca_file.is_absolute():
+                raise ValueError("ca_file moet relatief aan de configuratiemap zijn")
+            config_root = path.parent.resolve()
+            ca_file = (config_root / ca_file).resolve()
+            if not ca_file.is_relative_to(config_root):
+                raise ValueError("ca_file valt buiten de configuratiemap")
             context = ssl.create_default_context()
             context.load_verify_locations(cafile=str(ca_file))
             # Private deployments may have a CN such as 'openwebui' rather than
@@ -101,5 +107,5 @@ def build_ai_opener(url, *, config_path=None):
     return request.build_opener(_SameOriginRedirects())
 
 
-def open_ai_request(http_request, timeout=120):
+def open_ai_request(http_request, timeout=180):
     return build_ai_opener(http_request.full_url).open(http_request, timeout=timeout)

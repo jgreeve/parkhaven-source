@@ -21,7 +21,10 @@ from urllib.error import HTTPError
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-EXE = ROOT / "desktop/ParkHaven.Desktop/bin/Release/net8.0-windows/ParkHaven.Desktop.exe"
+EXE = Path(os.environ.get(
+    "PARKHAVEN_DESKTOP_EXE",
+    ROOT / "desktop/ParkHaven.Desktop/bin/Release/net8.0-windows/win-x64/ParkHaven.Desktop.exe",
+))
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 CALLBACK = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 user32.EnumWindows.argtypes = [CALLBACK, wintypes.LPARAM]
@@ -198,8 +201,10 @@ def main():
                         report = reports[0]
                         break
                 assert report is not None, "Host-owned report window did not load"
-                expect(report.locator("body")).to_contain_text("Opslaan als PDF")
-                expect(report.locator("body")).to_contain_text("1.000,0 m2")
+                expect(report.locator("body")).to_contain_text("Save as PDF")
+                expect(report.locator("body")).to_contain_text("1,000.0 m²")
+                report.locator("#save-pdf").click()
+                finish_dialog(shell)
                 assert not errors, errors
                 close_shell(shell)
                 try:
@@ -210,7 +215,7 @@ def main():
                     pass
                 else:
                     raise AssertionError("Backend still listening after normal window close")
-            print("PASS: owned authenticated backend, native picker/import, Unicode paths, protected copies, authenticated report window and normal-close backend shutdown.")
+            print("PASS: owned authenticated backend, native picker/import, Unicode paths, protected copies, authenticated report window, native PDF dialog and normal-close backend shutdown.")
         except Exception:
             for log in (temp / "state/logs").glob("*.log"):
                 print(log.read_text(encoding="utf-8"), flush=True)

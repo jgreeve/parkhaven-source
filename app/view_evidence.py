@@ -20,10 +20,11 @@ from .site_context import DEFAULT_SITE_CONTEXT_ROOT, SiteContextError, load_site
 
 
 VIEW_IDS = ("top", "overview", "facade-side", "park-side")
-WIDTH = 1200
-HEIGHT = 800
+WIDTH = 768
+HEIGHT = 512
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_BYTES = 16 * 1024 * 1024
+MAX_RUN_JSON_BYTES = 20 * 1024 * 1024
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -81,13 +82,22 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
     scene_path = data_dir / "scene.json"
     summary_path = data_dir / "geometry-summary.json"
     results_path = data_dir / "latest.json"
+    weather_path = data_dir.parent / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw"
     if job.get("job_type", "analysis") != "analysis" or job.get("status") != "completed":
         raise ProjectError("Modelbeelden zijn alleen beschikbaar voor een voltooide analyse.")
-    if not scene_path.is_file() or not summary_path.is_file() or not results_path.is_file():
+    if not scene_path.is_file() or not summary_path.is_file() or not results_path.is_file() or not weather_path.is_file():
         raise ProjectError("Scene, geometriesamenvatting en metrics moeten uit dezelfde voltooide run beschikbaar zijn.")
+    if (scene_path.stat().st_size > MAX_RUN_JSON_BYTES or summary_path.stat().st_size > MAX_RUN_JSON_BYTES
+            or results_path.stat().st_size > MAX_RUN_JSON_BYTES):
+        raise ProjectError("De runscene, geometriesamenvatting of metrics overschrijden de bestandsgroottelimiet.")
+    if weather_path.stat().st_size > MAX_RUN_JSON_BYTES:
+        raise ProjectError("Het weerbestand overschrijdt de bestandsgroottelimiet.")
     scene_sha256 = _sha256(scene_path)
     summary_sha256 = _sha256(summary_path)
     results_sha256 = _sha256(results_path)
+    weather_sha256 = _sha256(weather_path)
+    if weather_sha256 != job.get("weather_sha256"):
+        raise ProjectError("Het weerbestand is gewijzigd sinds deze run werd voorbereid.")
     if payload.get("scene_sha256") != scene_sha256 or payload.get("geometry_summary_sha256") != summary_sha256:
         raise ProjectError("De geladen scene of geometriesamenvatting is verouderd; laad de run opnieuw.")
     try:
@@ -181,6 +191,7 @@ def save_view_evidence(job: dict[str, Any], payload: dict[str, Any],
             "scene_sha256": scene_sha256,
             "geometry_summary_sha256": summary_sha256,
             "results_sha256": results_sha256,
+            "weather_sha256": weather_sha256,
             "definition_sha256": job.get("definition_sha256"),
             "site_context_id": site_context["context_id"],
             "site_context_sha256": site_context["manifest_sha256"],

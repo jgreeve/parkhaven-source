@@ -20,6 +20,8 @@ def make_run(tmp_path):
     analyzer.mkdir()
     (analyzer / "ParkHaven_MVP.3dm").write_bytes(b"context fixture")
     (analyzer / "ParkHaven_MVP.ghx").write_bytes(b"definition fixture")
+    (analyzer / "weather").mkdir()
+    (analyzer / "weather" / "NLD_ZH_Rotterdam.Geulhaven.AWS.063430_TMYx.epw").write_text("weather")
     job = prepare_run(root, project_id, analyzer, main.RHINO_RUNNER)
     return root, job, Path(job["data_dir"]).parent / "job.json"
 

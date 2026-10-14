@@ -39,7 +39,12 @@ from .workflow import (
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PROJECTS_ROOT = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "ParkHaven" / "projects"
 PROJECTS_ROOT = Path(os.environ.get("PARKHAVEN_PROJECTS_DIR", DEFAULT_PROJECTS_ROOT))
-ANALYZER_ROOT = Path(os.environ.get("PARKHAVEN_ANALYZER_ROOT", ROOT.parent / "ParkHaven_Analyzer_App_v0.2"))
+PACKAGED_ANALYZER_ROOT = ROOT / "analyzer"
+DEVELOPMENT_ANALYZER_ROOT = ROOT.parent / "ParkHaven_Analyzer_App_v0.2"
+ANALYZER_ROOT = Path(os.environ.get(
+    "PARKHAVEN_ANALYZER_ROOT",
+    PACKAGED_ANALYZER_ROOT if PACKAGED_ANALYZER_ROOT.is_dir() else DEVELOPMENT_ANALYZER_ROOT,
+))
 RHINO_EXE = Path(os.environ.get("PARKHAVEN_RHINO_EXE", r"C:\Program Files\Rhino 8\System\Rhino.exe"))
 RHINO_RUNNER = ROOT / "app" / "rhino" / "run_analysis.py"
 VIEWER_ASSETS = ANALYZER_ROOT / "app" / "static" / "vendor" / "three"
@@ -85,7 +90,7 @@ class ViewCapture(BaseModel):
     camera_position: list[float] = Field(min_length=3, max_length=3)
     camera_target: list[float] = Field(min_length=3, max_length=3)
     camera_up: list[float] = Field(min_length=3, max_length=3)
-    visible_layers: list[str] = Field(max_length=5)
+    visible_layers: list[str] = Field(max_length=8)
 
 
 class ViewEvidenceRequest(BaseModel):

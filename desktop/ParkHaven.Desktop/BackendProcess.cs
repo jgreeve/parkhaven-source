@@ -48,20 +48,35 @@ internal sealed class BackendProcess
         Directory.CreateDirectory(logs);
         LogPath = Path.Combine(logs, $"desktop-{SessionId}.log");
         Log("Desktop-backend starten.");
-        var root = FindApplicationRoot();
-        var python = Environment.GetEnvironmentVariable("PARKHAVEN_PYTHON")
-            ?? Path.Combine(root, ".venv", "Scripts", "python.exe");
-        if (!File.Exists(python))
-            throw new InvalidOperationException("Python ontbreekt. Voer setup_windows.cmd in de app-map uit en probeer opnieuw.");
-        var start = new ProcessStartInfo(python)
+        var packagedBackend = Path.Combine(AppContext.BaseDirectory, "backend", "ParkHaven.Backend.exe");
+        ProcessStartInfo start;
+        if (File.Exists(packagedBackend))
         {
-            WorkingDirectory = root, UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
-        };
-        start.ArgumentList.Add("-u");
-        start.ArgumentList.Add("-m");
-        start.ArgumentList.Add("app.desktop_server");
-        start.Environment["PYTHONIOENCODING"] = "utf-8";
+            start = new ProcessStartInfo(packagedBackend)
+            {
+                WorkingDirectory = Path.GetDirectoryName(packagedBackend)!,
+            };
+            start.Environment["PARKHAVEN_EXPECTED_PLUGIN"] = Path.Combine(
+                AppContext.BaseDirectory, "RhinoPlugin", "ParkHaven.Rhino.rhp");
+        }
+        else
+        {
+            var root = FindApplicationRoot();
+            var python = Environment.GetEnvironmentVariable("PARKHAVEN_PYTHON")
+                ?? Path.Combine(root, ".venv", "Scripts", "python.exe");
+            if (!File.Exists(python))
+                throw new InvalidOperationException("Python ontbreekt. Voer setup_windows.cmd in de app-map uit en probeer opnieuw.");
+            start = new ProcessStartInfo(python) { WorkingDirectory = root };
+            start.ArgumentList.Add("-u");
+            start.ArgumentList.Add("-m");
+            start.ArgumentList.Add("app.desktop_server");
+            start.Environment["PYTHONIOENCODING"] = "utf-8";
+        }
+        start.UseShellExecute = false;
+        start.CreateNoWindow = true;
+        start.RedirectStandardInput = true;
+        start.RedirectStandardOutput = true;
+        start.RedirectStandardError = true;
         process = new Process { StartInfo = start, EnableRaisingEvents = true };
         process.OutputDataReceived += (_, args) => ReceiveReady(args.Data);
         process.ErrorDataReceived += (_, args) => { if (args.Data != null) Log(args.Data); };
@@ -73,7 +88,7 @@ internal sealed class BackendProcess
                 try { exitCode = process?.ExitCode; } catch (InvalidOperationException) { }
             }
             Log("Backendproces afgesloten; exitcode " + exitCode + ".");
-            ready.TrySetException(new InvalidOperationException("De backend stopte tijdens het starten. Controleer het logbestand en voer zo nodig setup_windows.cmd uit."));
+            ready.TrySetException(new InvalidOperationException("De backend stopte tijdens het starten. Controleer het logbestand en herstel zo nodig de installatie."));
             if (!stopping && IsReady) UnexpectedExit?.Invoke();
         };
         cancellationToken.ThrowIfCancellationRequested();

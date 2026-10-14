@@ -28,7 +28,11 @@ def main():
     projects[0]["runs"] = [{"run_id": "baseline", "status": "completed", "scene_available": True,
                             "scene_sha256": "a" * 64, "geometry_summary": {"sha256": "b" * 64},
                             "placement": placement, "model_units": {"physical_size_m": [10, 20, 9]},
-                            "results": {"bvo_m2": 1000, "sight_pct": 65.12, "indicative_cost_eur": 1800000}}]
+                            "results": {"bvo_m2": 1000, "sight_pct": 65.12, "indicative_cost_eur": 1800000,
+                                        "shadow_mean_hours": 5.1, "shadow_min_hours": 0, "shadow_max_hours": 11,
+                                        "shadow_sunlit_pct": 93.9, "utci_mean_c": 12.6, "utci_max_c": 18.5,
+                                        "heat_stress_area_pct": 0, "pile_count_load": 82, "pile_count_grid": 127,
+                                        "pile_max_storeys": 21, "pile_max_utilization_pct": 100}}]
     projects[0]["placement_preview"] = {"run_id": "preview", "job_type": "placement_preview",
         "status": "completed", "scene_available": True, "placement": placement,
         "context_sha256": "e85306b01ca9bc2a0f12f80e37fc5da4a685aaf30e5e9ba8ff2c2148226f39d1",
@@ -48,13 +52,18 @@ def main():
     context_public = {key: value for key, value in context.items() if key != "image_filename"}
     context_public.update(manifest_sha256=hashlib.sha256(context_raw).hexdigest(), image_url="/api/site-context/aerial.jpg")
     viewer_assets = ROOT.parent / "ParkHaven_Analyzer_App_v0.2/app/static/vendor/three"
-    scene = {"schema_version": 1, "units": "meters", "up_axis": "Z", "timestamp": "2026-09-30T12:00:00Z",
+    scene = {"schema_version": 2, "units": "meters", "up_axis": "Z", "timestamp": "2026-09-30T12:00:00Z",
               "layers": [{"name": "PH_DESIGN", "vertices": [0, 0, 0, 10, 0, 0, 0, 10, 9], "triangles": [0, 1, 2]},
                          {"name": "PH_FACADES", "vertices": [-10, -20, 0, 10, -20, 0, 0, -20, 10], "triangles": [0, 1, 2]},
                          {"name": "PH_TARGET", "vertices": [-10, 20, 0, 10, 20, 0, 0, 20, 10], "triangles": [0, 1, 2]},
-                         {"name": "REFERENCE_CONTEXT", "vertices": [-20, -20, 0, 20, -20, 0, 0, 20, 0], "triangles": [0, 1, 2]}]}
+                         {"name": "REFERENCE_CONTEXT", "vertices": [-20, -20, 0, 20, -20, 0, 0, 20, 0], "triangles": [0, 1, 2]},
+                         {"name": "ANALYSIS_SHADOW", "vertices": [0, 0, 9, 10, 0, 9, 0, 10, 9],
+                          "triangles": [0, 1, 2], "vertex_colors": [30, 70, 130, 255, 220, 70, 30, 70, 130]},
+                         {"name": "ANALYSIS_UTCI", "vertices": [0, 0, 9.1, 10, 0, 9.1, 0, 10, 9.1],
+                          "triangles": [0, 1, 2], "vertex_colors": [45, 125, 210, 230, 55, 40, 45, 125, 210]},
+                         {"name": "ANALYSIS_PILES", "vertices": [4, 4, 0, 5, 4, 0, 4, 5, 1], "triangles": [0, 1, 2]}]}
     preview_scene = {"schema_version": 1, "kind": "placement_preview", "units": "meters", "up_axis": "Z",
-                     "layers": [*scene["layers"],
+                      "layers": [*scene["layers"][:4],
                                 {"name": "PH_VISUAL_ONLY", "vertices": [1, 1, 0, 2, 1, 0, 1, 2, 0],
                                  "triangles": [0, 1, 2]}]}
 
@@ -112,7 +121,7 @@ def main():
             assert values["scene_sha256"] == "a" * 64 and values["geometry_summary_sha256"] == "b" * 64
             assert values["site_context_sha256"] == context_public["manifest_sha256"]
             assert [view["id"] for view in values["views"]] == ["top", "overview", "facade-side", "park-side"]
-            assert all(view["width"] == 1200 and view["height"] == 800 for view in values["views"])
+            assert all(view["width"] == 768 and view["height"] == 512 for view in values["views"])
             assert all(view["image_data_url"].startswith("data:image/png;base64,iVBOR") for view in values["views"])
             assert all("PDOK_AERIAL" in view["visible_layers"] for view in values["views"])
             assert values["views"][2]["camera_position"] != values["views"][3]["camera_position"]
@@ -146,6 +155,15 @@ def main():
             expect(page.locator("#model-viewer")).to_have_attribute("data-site-context", "parkhaven-pdok-aerial-2025-v1")
             expect(page.locator("#aerial-visible")).to_be_enabled()
             expect(page.locator("#aerial-status")).to_contain_text("PDOK")
+            expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "7")
+            expect(page.locator("#analysis-legends")).to_be_visible()
+            expect(page.locator("#metric-shadow")).to_contain_text("5,1 uur")
+            expect(page.locator("#metric-utci")).to_contain_text("12,6 °C")
+            expect(page.locator("#metric-piles")).to_contain_text("82 palen")
+            expect(page.locator("#model-viewer")).to_have_attribute("data-placement-state", "calculated")
+            expect(page.locator("#capture-views")).to_be_enabled()
+            expect(page.locator("#capture-status")).to_contain_text("Laatste analyse geladen")
+            page.locator("#show-preview").click()
             expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "5")
             expect(page.locator("#model-viewer")).to_have_attribute("data-placement-state", "approved")
             expect(page.locator("#model-viewer")).to_have_attribute("data-reference-matrix", "identity")
@@ -224,7 +242,7 @@ def main():
             expect(page.locator("#check-scale")).to_contain_text("Controleer Modeleenheid")
             expect(page.locator("#metrics-provenance")).to_contain_text("laatste analyse")
             page.locator("#show-analysis").click()
-            expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "4")
+            expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "7")
             expect(page.locator("#model-viewer")).to_have_attribute("data-placement-state", "calculated")
             expect(page.locator("#capture-views")).to_be_enabled()
             expect(page.locator("#ai-form button")).to_be_disabled()
@@ -234,6 +252,8 @@ def main():
             expect(page.locator("#ai-form button")).to_be_enabled()
             expect(page.locator("#ai-status")).to_contain_text("gereed voor AI-advies")
             assert len(captured_views) == 4
+            assert all({"ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"}
+                       <= set(view["visible_layers"]) for view in captured_views)
             page.locator("#show-preview").click()
             expect(page.locator("#model-viewer")).to_have_attribute("data-triangles", "5")
             page.locator("#view-top").click()
@@ -273,7 +293,7 @@ def main():
             assert saved_units == ["meters"]
             assert not errors, errors
             browser.close()
-        print("PASS: Edge preview/gizmo/spatial checks plus four controlled 1200x800 run-view captures with reference-derived cameras and evidence upload; no JS exceptions.")
+        print("PASS: Edge preview/gizmo/spatial checks plus four controlled 768x512 run-view captures with reference-derived cameras and evidence upload; no JS exceptions.")
     finally:
         server.shutdown()
         server.server_close()

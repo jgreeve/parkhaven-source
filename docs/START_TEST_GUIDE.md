@@ -163,14 +163,41 @@ After a completed run:
 
 1. Select **Vier modelbeelden vastleggen** and wait until all images are stored.
 2. Enter the provider base URL, for example `https://api.openai.com/v1`.
-3. Enter an OpenAI-compatible vision/chat model name that supports image input and JSON output.
+3. Enter an OpenAI-compatible chat model name that can return JSON.
 4. Enter the API key.
 5. Describe the design goal.
 6. Select **Vraag advies**.
 
 The advice action stays disabled until valid same-run model images exist. The
-request includes those four images, bounded geometry and unchanged Grasshopper
-metrics. Replies with unknown metric, view or object references are rejected.
+request includes bounded labelled geometry, verified view projections and unchanged
+Grasshopper metrics, but does not upload the images. The provider has 120 seconds to
+return a response. Replies with unknown metric, view or object references are rejected.
+Text-only OpenAI-compatible chat models are supported.
+For the official DeepSeek endpoint, ParkHaven explicitly disables thinking mode and
+enables JSON output so hidden reasoning cannot consume the advice output budget.
+Use a model ID returned by DeepSeek's model-list endpoint; current documented IDs
+include `deepseek-flash` and `deepseek-v4-pro`.
+Common equivalent response fields from local models are normalized, such as
+`observatie`/`tekst`, `view_id`/`view_ids` and an omitted optional `object_ids` list.
+This does not permit unknown evidence references.
+
+The app labels the largest analytical masses as **Volume A**, **Volume B**, etc. and
+derives their relative left/centre/right position separately for each controlled
+camera. A valid new advice response contains exactly three prioritized design actions.
+Each action must identify a labelled volume, geometric operation, view-anchored
+direction, concrete test magnitude, design goal, hypothesized effect, trade-off and
+Grasshopper metrics to recalculate. Vague actions and invented evidence are rejected.
+If a concrete direction omits the view name but cites a valid view in its evidence,
+the app adds that view anchor deterministically. Empty, truncated, refused and malformed
+provider responses are reported in readable terms. Invalid replies are not retried
+automatically, so a slow or billed provider is called only once per request.
+
+The printable report presents these actions first. Raw UUIDs and metric field names
+are replaced by readable labels; technical provenance is separated from the main
+advice, and the four evidence images are included as a compact gallery. Older saved
+advice remains visible as general advice but only a new request can produce the
+structured design-action cards. Volume A/B/C markers are projected onto each report
+image so the referenced masses remain identifiable.
 
 The viewer should show **PDOK-luchtfoto** beneath the model and the attribution
 `Bron: Beeldmateriaal Nederland, via PDOK`. Use the checkbox and **Dekking** slider
@@ -192,10 +219,13 @@ plain HTTP is accepted only for localhost development.
 
 1. Select **Rapport openen**.
 2. Select **Opslaan als PDF**.
-3. Choose a PDF printer or **Save as PDF** in the Windows print dialog.
+3. Choose the destination file. The desktop app creates an A4 PDF without browser
+   headers or footers. Browser-only development falls back to the print dialog.
 
-The report separates Grasshopper results from AI inference and omits unavailable
-green, heat and image results rather than inventing them.
+The A4 layout keeps the three headline metrics in one row, places screening values in
+a compact table and keeps the four evidence images in a two-column grid. It separates
+Grasshopper results from AI inference and omits unavailable results rather than
+inventing them.
 
 ## Automated tests
 

@@ -190,7 +190,9 @@ async function openProject(projectId) {
     schedulePoll();
   }
   renderPreview(activePreview);
-  showViewerMode(activePreview ? "preview" : "analysis");
+  const analysisReady = activeRun?.status === "completed" && activeRun.scene_available;
+  showViewerMode(analysisReady ? "analysis" : (activePreview ? "preview" : "analysis"));
+  if (analysisReady) document.getElementById("capture-status").textContent = "Laatste analyse geladen. Leg nu vier modelbeelden vast.";
   if (activePreview && !["completed", "failed", "cancelled"].includes(activePreview.status)) schedulePreviewPoll();
 }
 
@@ -358,10 +360,23 @@ function renderRun(run) {
   if (viewerMode === "analysis") showViewerMode("analysis");
   document.getElementById("metrics").hidden = true;
   if (run.status === "completed" && run.results) {
+    const metrics = run.results;
     document.getElementById("metrics").hidden = false;
-    document.getElementById("metric-bvo").textContent = `${number(run.results.bvo_m2)} m2`;
-    document.getElementById("metric-sight").textContent = `${number(run.results.sight_pct)}%`;
-    document.getElementById("metric-cost").textContent = `EUR ${number(run.results.indicative_cost_eur, 0)}`;
+    document.getElementById("metric-bvo").textContent = `${number(metrics.bvo_m2)} m2`;
+    document.getElementById("metric-sight").textContent = `${number(metrics.sight_pct)}%`;
+    document.getElementById("metric-cost").textContent = `EUR ${number(metrics.indicative_cost_eur, 0)}`;
+    const shadowAvailable = Number.isFinite(metrics.shadow_mean_hours);
+    document.getElementById("metric-shadow-card").hidden = !shadowAvailable;
+    document.getElementById("metric-shadow").textContent = `${number(metrics.shadow_mean_hours)} uur gemiddeld`;
+    document.getElementById("metric-shadow-range").textContent = `${number(metrics.shadow_min_hours)}–${number(metrics.shadow_max_hours)} uur · ${number(metrics.shadow_sunlit_pct)}% zonbeschenen`;
+    const utciAvailable = Number.isFinite(metrics.utci_mean_c);
+    document.getElementById("metric-utci-card").hidden = !utciAvailable;
+    document.getElementById("metric-utci").textContent = `${number(metrics.utci_mean_c)} °C gemiddeld`;
+    document.getElementById("metric-heat").textContent = `max. ${number(metrics.utci_max_c)} °C · ${number(metrics.heat_stress_area_pct)}% gebied met hittestress`;
+    const pilesAvailable = Number.isFinite(metrics.pile_count_load) || Number.isFinite(metrics.pile_count_grid);
+    document.getElementById("metric-piles-card").hidden = !pilesAvailable;
+    document.getElementById("metric-piles").textContent = `${number(metrics.pile_count_load, 0)} palen op belasting`;
+    document.getElementById("metric-piles-detail").textContent = `${number(metrics.pile_count_grid, 0)} raster · max. ${number(metrics.pile_max_storeys, 0)} lagen · ${number(metrics.pile_max_utilization_pct)}% benutting`;
   }
   document.getElementById("metrics-provenance").textContent = run.status === "completed" && run.results
     ? (placementDirty ? "Getoonde resultaten horen bij de onveranderde laatste analyse, niet bij dit concept."
@@ -472,7 +487,12 @@ async function pollRun() {
     if (!response.ok) throw new Error("Analysestatus tijdelijk niet beschikbaar.");
     const run = await response.json();
     if (projectId !== activeProjectId || runId !== activeRunId) return;
+    const completedNow = run.status === "completed" && activeRun?.status !== "completed";
     renderRun(run);
+    if (completedNow) {
+      showViewerMode("analysis");
+      document.getElementById("capture-status").textContent = "Laatste analyse geladen. Leg nu vier modelbeelden vast.";
+    }
     if (!["completed", "failed", "cancelled"].includes(run.status)) schedulePoll();
   } catch (error) {
     if (projectId === activeProjectId && runId === activeRunId) {
@@ -490,18 +510,26 @@ function schedulePoll() {
 document.getElementById("ai-form").addEventListener("submit", async event => {
   event.preventDefault();
   const status = document.getElementById("ai-status");
+  const keyInput = document.getElementById("ai-key");
   status.textContent = "AI-advies aanvragen...";
-  const response = await fetch(`/api/projects/${activeProjectId}/runs/${activeRunId}/ai-review`, {
-    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
-      endpoint: document.getElementById("ai-endpoint").value,
-      api_key: document.getElementById("ai-key").value,
-      model: document.getElementById("ai-model").value,
-      design_goal: document.getElementById("design-goal").value,
-    }),
-  });
-  const result = await response.json();
-  status.textContent = response.ok ? result.samenvatting : result.detail;
-  document.getElementById("ai-key").value = "";
+  try {
+    const response = await fetch(`/api/projects/${activeProjectId}/runs/${activeRunId}/ai-review`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
+        endpoint: document.getElementById("ai-endpoint").value,
+        api_key: keyInput.value,
+        model: document.getElementById("ai-model").value,
+        design_goal: document.getElementById("design-goal").value,
+      }),
+    });
+    let result = {};
+    try { result = await response.json(); } catch (_) { /* Use the stable message below. */ }
+    if (!response.ok) throw new Error(result.detail || `AI-provider request failed (HTTP ${response.status}).`);
+    status.textContent = result.samenvatting || "AI-advies is opgeslagen en staat in het rapport.";
+  } catch (error) {
+    status.textContent = error.message || "AI-advies kon niet worden opgehaald. Probeer opnieuw.";
+  } finally {
+    keyInput.value = "";
+  }
 });
 
 async function loadProjects() {

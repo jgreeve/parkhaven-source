@@ -21,10 +21,13 @@ const checkProvenance = document.getElementById("check-provenance");
 const aerialVisible = document.getElementById("aerial-visible");
 const aerialOpacity = document.getElementById("aerial-opacity");
 const aerialStatus = document.getElementById("aerial-status");
+const analysisLegends = document.getElementById("analysis-legends");
 const buttons = [...section.querySelectorAll(".viewer-actions button")];
 const toggles = [...section.querySelectorAll("input[data-viewer-layer]")];
 const colors = {PH_DESIGN: 0xd7a35d, PH_VISUAL_ONLY: 0xa777b2, PH_FACADES: 0x548093,
-  PH_TARGET: 0x52966a, REFERENCE_CONTEXT: 0xb4b9b8};
+  PH_TARGET: 0x52966a, REFERENCE_CONTEXT: 0xb4b9b8, ANALYSIS_SHADOW: 0x526f91,
+  ANALYSIS_UTCI: 0xd9683f, ANALYSIS_PILES: 0x4c4037};
+const analysisLayers = new Set(["ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"]);
 
 function startViewer() {
   const renderer = new THREE.WebGLRenderer({antialias: true});
@@ -183,6 +186,7 @@ function startViewer() {
     scene.add(model);
     defaultView = null;
     activeDetail = null;
+    analysisLegends.hidden = true;
     gizmo.visible = false;
     setGizmoEnabled(false);
     buttons.forEach(button => { button.disabled = true; });
@@ -345,8 +349,8 @@ function startViewer() {
   document.getElementById("view-side").addEventListener("click", () => setPreset(new THREE.Vector3(1, 0, 0.25)));
 
   function createModel(data, kind) {
-    if (data.schema_version !== 1 || data.units !== "meters" || data.up_axis !== "Z" || !Array.isArray(data.layers)) {
-      throw new Error("Onbekend 3D-bestandsformaat; verwacht schema 1, meters en Z-omhoog.");
+    if (![1, 2].includes(data.schema_version) || data.units !== "meters" || data.up_axis !== "Z" || !Array.isArray(data.layers)) {
+      throw new Error("Onbekend 3D-bestandsformaat; verwacht schema 1 of 2, meters en Z-omhoog.");
     }
     if (kind === "preview" && data.kind !== "placement_preview") throw new Error("Dit bestand is geen plaatsingspreview.");
     const group = new THREE.Group();
@@ -355,7 +359,9 @@ function startViewer() {
     try {
       for (const layer of data.layers) {
         if (!Object.hasOwn(colors, layer.name) || seen.has(layer.name)
-            || (layer.name === "PH_VISUAL_ONLY" && kind !== "preview")) throw new Error("Onbekende of dubbele modellaag.");
+            || (layer.name === "PH_VISUAL_ONLY" && kind !== "preview")
+            || (analysisLayers.has(layer.name) && (kind !== "analysis" || data.schema_version !== 2)))
+          throw new Error("Onbekende of dubbele modellaag.");
         seen.add(layer.name);
         const {vertices, triangles} = layer;
         if (!Array.isArray(vertices) || !Array.isArray(triangles) || vertices.length % 3 || triangles.length % 3
@@ -368,10 +374,18 @@ function startViewer() {
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
         geometry.setIndex(triangles);
         geometry.computeVertexNormals();
+        const vertexColors = layer.vertex_colors;
+        if (vertexColors !== undefined) {
+          if (!["ANALYSIS_SHADOW", "ANALYSIS_UTCI"].includes(layer.name)
+              || !Array.isArray(vertexColors) || vertexColors.length !== vertices.length
+              || !vertexColors.every(value => Number.isInteger(value) && value >= 0 && value <= 255))
+            throw new Error("Ongeldige RGB-vertexkleuren.");
+          geometry.setAttribute("color", new THREE.Uint8BufferAttribute(vertexColors, 3, true));
+        }
         const layerGroup = new THREE.Group();
         layerGroup.name = layer.name;
-        layerGroup.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color: colors[layer.name], roughness: 0.9,
-          metalness: 0, side: THREE.DoubleSide, flatShading: true})));
+        layerGroup.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color: vertexColors === undefined ? colors[layer.name] : 0xffffff, roughness: 0.9,
+          metalness: 0, side: THREE.DoubleSide, flatShading: true, vertexColors: vertexColors !== undefined})));
         if (layer.name === "PH_DESIGN" || layer.name === "PH_VISUAL_ONLY") layerGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 25),
           new THREE.LineBasicMaterial({color: 0x785a34, transparent: true, opacity: 0.42})));
         group.add(layerGroup);
@@ -581,7 +595,7 @@ function startViewer() {
   renderer.domElement.addEventListener("pointercancel", endDrag, true);
 
   function controlledCamera(box, direction, topView = false) {
-    const captureCamera = new THREE.PerspectiveCamera(40, 1200 / 800, 0.1, 10000);
+    const captureCamera = new THREE.PerspectiveCamera(40, 768 / 512, 0.1, 10000);
     const center = box.getCenter(new THREE.Vector3());
     const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
     const fov = THREE.MathUtils.degToRad(captureCamera.fov);
@@ -611,16 +625,20 @@ function startViewer() {
     if (activeDetail?.kind !== "analysis" || activeDetail.evidenceId !== request.runId || loadedKey !== `analysis/${request.projectId}/${request.runId}`)
       throw new Error("Selecteer en laad eerst de onveranderde laatste analyse.");
     const design = layerBounds(["PH_DESIGN"]);
-    const all = layerBounds(["PH_DESIGN", "PH_FACADES", "PH_TARGET", "REFERENCE_CONTEXT"]);
+    const all = layerBounds(["PH_DESIGN", "PH_FACADES", "PH_TARGET", "REFERENCE_CONTEXT",
+      "ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"]);
     if (!aerialManifest || !aerialMesh) throw new Error("De vaste PDOK-luchtfotocontext is nog niet geladen.");
     all.expandByObject(aerial);
     if (design.isEmpty() || all.isEmpty()) throw new Error("De runscene bevat onvoldoende geometrie voor modelbeelden.");
     const designCenter = design.getCenter(new THREE.Vector3());
+    const captureBox = layerBounds(["PH_DESIGN", "ANALYSIS_SHADOW", "ANALYSIS_UTCI", "ANALYSIS_PILES"]);
+    const captureSize = captureBox.getSize(new THREE.Vector3());
+    captureBox.expandByScalar(Math.max(captureSize.x, captureSize.y, captureSize.z) * 0.12);
     const definitions = [
-      {id: "top", box: all, direction: new THREE.Vector3(0, 0, 1), top: true},
-      {id: "overview", box: all, direction: new THREE.Vector3(1, -1.4, 1)},
-      {id: "facade-side", box: all, direction: referenceDirection("PH_FACADES", designCenter)},
-      {id: "park-side", box: all, direction: referenceDirection("PH_TARGET", designCenter)},
+      {id: "top", box: captureBox, direction: new THREE.Vector3(0, 0, 1), top: true},
+      {id: "overview", box: captureBox, direction: new THREE.Vector3(1, -1.4, 1)},
+      {id: "facade-side", box: captureBox, direction: referenceDirection("PH_FACADES", designCenter)},
+      {id: "park-side", box: captureBox, direction: referenceDirection("PH_TARGET", designCenter)},
     ];
     const visibleLayers = [...model.children.filter(layer => layer.children.length > 0).map(layer => layer.name), "PDOK_AERIAL"].sort();
     const visibility = model.children.map(layer => [layer, layer.visible]);
@@ -628,7 +646,7 @@ function startViewer() {
     const gizmoWasVisible = gizmo.visible;
     const captureRenderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
     captureRenderer.setPixelRatio(1);
-    captureRenderer.setSize(1200, 800, false);
+    captureRenderer.setSize(768, 512, false);
     captureRenderer.setClearColor(0xe9efeb);
     try {
       model.children.forEach(layer => { layer.visible = layer.children.length > 0; });
@@ -641,8 +659,8 @@ function startViewer() {
         return {
           id: definition.id,
           image_data_url: captureRenderer.domElement.toDataURL("image/png"),
-          width: 1200,
-          height: 800,
+          width: 768,
+          height: 512,
           projection: "perspective",
           fov_degrees: controlled.camera.fov,
           camera_position: controlled.camera.position.toArray(),
@@ -707,6 +725,7 @@ function startViewer() {
       dispose(model);
       model = next.group;
       scene.add(model);
+      analysisLegends.hidden = !model.children.some(layer => analysisLayers.has(layer.name));
       applyVisibility();
       loadedKey = key;
       section.dataset.state = "ready";
