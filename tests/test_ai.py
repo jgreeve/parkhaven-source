@@ -409,6 +409,27 @@ def test_review_accepts_within_footprint_tests_without_site_constraints():
     assert len(ai._validate_review(review, current_evidence)["ontwerpacties"]) == 3
 
 
+def test_review_accepts_explicitly_negated_horizontal_move_wording():
+    current_evidence = evidence()
+    current_evidence["horizontal_moves_allowed"] = False
+    review = valid_review()
+    review["samenvatting"] = "The proposal does not require moving volumes and remains within the current footprint."
+    for action, operation, direction in zip(review["ontwerpacties"], ("raise", "lower", "narrow"),
+                                             ("up in the overview", "down in the overview", "inward in the overview")):
+        action.update(ingreep=operation, richting=direction,
+                      ontwerpdoel="Improve performance without moving the volume horizontally.")
+    assert len(ai._validate_review(review, current_evidence)["ontwerpacties"]) == 3
+
+
+def test_review_rejects_move_proposal_after_negated_move_wording():
+    current_evidence = evidence()
+    current_evidence["horizontal_moves_allowed"] = False
+    review = valid_review()
+    review["samenvatting"] = "No relocation is proposed for Volume A; shift Volume B toward the park."
+    with pytest.raises(ai.AiError, match="AI-samenvatting.*horizontale verplaatsing"):
+        ai._validate_review(review, current_evidence)
+
+
 def test_review_rejects_hidden_horizontal_move_in_action_prose():
     current_evidence = evidence()
     current_evidence["horizontal_moves_allowed"] = False

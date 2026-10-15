@@ -195,10 +195,11 @@ provider responses are reported in readable terms. Invalid replies are not retri
 automatically, so a slow or billed provider is called only once per request.
 
 No verified plot, access, tunnel or other infrastructure envelope is currently
-available. The evidence package tells the provider this explicitly, and the server
-rejects horizontal relocation, footprint expansion and rotation advice until an
-authoritative constraint package is installed. Aerial imagery alone is not treated as
-proof of a subsurface tunnel or legal clearance.
+available. The evidence package tells the provider this explicitly. Horizontal
+relocation, footprint expansion and rotation may be suggested as exploratory
+sensitivity tests, but they do not establish feasibility or clearance. Verify every
+such test against authoritative site constraints before use. Aerial imagery alone is
+not proof of a subsurface tunnel or legal clearance.
 
 The printable report presents these actions first. Raw UUIDs and metric field names
 are replaced by readable labels; technical provenance is separated from the main

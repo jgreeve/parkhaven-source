@@ -23,7 +23,7 @@ class AiError(ValueError):
 AI_TIMEOUT_SECONDS = 120
 MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
 MAX_EVIDENCE_JSON_BYTES = 20_000_000
-ADVICE_POLICY_VERSION = "site-constraints-v1"
+ADVICE_POLICY_VERSION = "site-constraints-v2"
 SYSTEM_PROMPT = """/no_think
 Return one JSON object matching response_schema. No Markdown, reasoning, or preamble.
 Write concise English and use only supplied IDs and evidence.
@@ -32,10 +32,10 @@ Rules:
 - Grasshopper values are authoritative: quote, never recalculate or infer causation.
 - Labelled dimensions and view projections support relative spatial observations only;
   they do not prove appearance, quantities, orientation, plot, ground, or performance.
-- Treat site_constraints as hard boundaries on the advice. When horizontal_moves_allowed
-  is false, do not use shift, set_back, widen, or rotate: suggest tests that stay within
-  the current footprint. Never claim clearance from tunnels or other infrastructure
-  when transport_infrastructure is unavailable.
+- Treat site_constraints as evidence limits. Horizontal moves may be proposed when
+  horizontal_moves_allowed is true, but describe them as exploratory sensitivity tests.
+  Never claim clearance from tunnels, plots, access routes, or other infrastructure when
+  transport_infrastructure is unavailable; state that site verification is still required.
 - Never expose raw IDs, schema keys, or layer names in prose.
 - Use view-relative directions unless evidence explicitly verifies another meaning.
 - Do not invent dimensions. Prefer a 5-10% sensitivity range; metres are allowed only
@@ -272,8 +272,8 @@ def load_model_evidence(job: dict[str, Any]) -> dict[str, Any]:
         "site_constraints": {
             "status": "unavailable",
             "transport_infrastructure": "unavailable",
-            "horizontal_moves_allowed": False,
-            "reason": "No verified plot, access, tunnel, or other infrastructure envelope is available.",
+            "horizontal_moves_allowed": True,
+            "reason": "Exploratory horizontal tests are allowed, but no verified plot, access, tunnel, or other infrastructure envelope is available.",
         },
     }
     encoded = json.dumps(structured, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -287,7 +287,7 @@ def load_model_evidence(job: dict[str, Any]) -> dict[str, Any]:
         "metric_fields": set(metrics),
         "design_elements": design_elements,
         "element_ids": {item["element_id"] for item in design_elements},
-        "horizontal_moves_allowed": False,
+        "horizontal_moves_allowed": True,
         "provenance": {
             "view_evidence_sha256": _sha256(paths["views"]),
             **{key: expected[key] for key in ("scene_sha256", "geometry_summary_sha256", "results_sha256", "weather_sha256", "site_context_sha256")},
@@ -400,6 +400,29 @@ def _evidenced_dimensions(evidence: dict[str, Any]) -> set[float]:
     return values
 
 
+_UNSUPPORTED_MOVE_TERM = (
+    r"(?:shift(?:s|ed|ing)?|mov(?:e|es|ed|ing|ements?)|relocat\w*|"
+    r"set\s*back|setback|backwards?|outwards?|footprint\s+expansion)"
+)
+_UNSUPPORTED_MOVE = re.compile(rf"\b{_UNSUPPORTED_MOVE_TERM}\b", re.IGNORECASE)
+_NEGATED_UNSUPPORTED_MOVE = re.compile(
+    rf"\b(?:no|without|avoid(?:s|ed|ing)?|prevent(?:s|ed|ing)?|forbid(?:s|den|ding)?|"
+    rf"geen|zonder|vermijd(?:t|en)?|voorkom(?:t|en)?|verbied(?:t|en)?)\s+"
+    rf"(?:\w+[ -]){{0,3}}{_UNSUPPORTED_MOVE_TERM}\b|"
+    rf"\b(?:does|do|did|will|would|should|must|is|are)\s+not\s+"
+    rf"(?:\w+[ -]){{0,3}}{_UNSUPPORTED_MOVE_TERM}\b|"
+    rf"\b{_UNSUPPORTED_MOVE_TERM}\b\s+(?:is|are|remains?|wordt|blijft)\s+"
+    rf"(?:not\s+(?:allowed|permitted|proposed|recommended|required)|prohibited|forbidden|disallowed|withheld|"
+    rf"niet\s+toegestaan|verboden|tegengehouden)",
+    re.IGNORECASE,
+)
+
+
+def _proposes_unsupported_move(value: str) -> bool:
+    """Distinguish a movement proposal from an explicit movement prohibition."""
+    return _UNSUPPORTED_MOVE.search(_NEGATED_UNSUPPORTED_MOVE.sub("", value)) is not None
+
+
 def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(review, dict) or not isinstance(review.get("samenvatting"), str):
         raise AiError("AI-provider gaf geen geldig gestructureerd advies terug.")
@@ -414,10 +437,7 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
     if not 1 <= len(calculations) <= 3 or not 1 <= len(observations) <= 3 or not 1 <= len(limitations) <= 3:
         raise AiError("AI output must contain 1-3 findings, observations, and limitations.")
     summary = _reader_text(review["samenvatting"], "samenvatting", 450)
-    unsupported_move = re.compile(
-        r"\b(?:shift(?:s|ed|ing)?|mov(?:e|es|ed|ing|ements?)|relocat\w*|set\s*back|setback|backwards?|outwards?|footprint\s+expansion)\b",
-        re.IGNORECASE)
-    if not evidence.get("horizontal_moves_allowed", True) and unsupported_move.search(summary):
+    if not evidence.get("horizontal_moves_allowed", True) and _proposes_unsupported_move(summary):
         raise AiError("AI-samenvatting stelt een niet-geverifieerde horizontale verplaatsing voor.")
     limitations = [_reader_text(value, "beperkingen", 220) for value in limitations]
     normalized_calculations = []
@@ -483,7 +503,7 @@ def _validate_review(review: Any, evidence: dict[str, Any]) -> dict[str, Any]:
         effect = _reader_text(effect, "ontwerpacties.verwacht_effect", 180)
         tradeoff = _reader_text(tradeoff, "ontwerpacties.afweging", 180)
         if (not evidence.get("horizontal_moves_allowed", True)
-                and any(unsupported_move.search(text) for text in (goal, effect, tradeoff))):
+                and any(_proposes_unsupported_move(text) for text in (goal, effect, tradeoff))):
             raise AiError("Ontwerpactie stelt in de toelichting een niet-geverifieerde horizontale verplaatsing voor.")
         checks = _canonical_ids(_reference_list(item, "controle_metric_fields", "controle_metric_field"), "metric", evidence)
         if not checks or not set(checks) <= evidence["metric_fields"]:

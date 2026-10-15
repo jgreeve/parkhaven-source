@@ -343,7 +343,8 @@ def test_completed_run_publishes_bounded_same_run_view_evidence(client, tmp_path
     assert "geometry" not in captured["evidence"]["structured"]
     assert set(captured["evidence"]["structured"]) == {
         "calculated_results", "design_elements", "views", "evidence_status", "site_constraints"}
-    assert captured["evidence"]["horizontal_moves_allowed"] is False
+    assert captured["evidence"]["horizontal_moves_allowed"] is True
+    assert captured["evidence"]["structured"]["site_constraints"]["status"] == "unavailable"
     assert client.get(f"/api/projects/{project_id}/runs/{job['run_id']}").json()["view_evidence_available"] is True
 
     first_image = data_dir / manifest["views"][0]["path"]

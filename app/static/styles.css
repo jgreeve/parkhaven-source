@@ -8,8 +8,10 @@
 [hidden] { display:none !important; }
 body { margin:0; min-height:100vh; }
 header { height:76px; padding:0 5vw; display:flex; align-items:center; justify-content:space-between; background:#163a3b; color:#fff; }
-.brand { color:#fff; text-decoration:none; font-weight:750; letter-spacing:.09em; }
-.brand span { color:#9dbdb5; font-weight:350; margin-left:7px; }
+.brand { display:flex; align-items:center; gap:11px; color:#fff; text-decoration:none; font-weight:750; letter-spacing:.09em; }
+.brand img { width:36px; height:57px; object-fit:contain; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+.brand-name { color:#fff; }
+.brand-name span { color:#9dbdb5; font-weight:350; margin-left:7px; }
 #connection { font-size:11px; letter-spacing:.14em; color:#b7e6c8; }
 main { max-width:1420px; margin:auto; padding:54px 5vw 80px; }
 .hero { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:8vw; align-items:end; }
@@ -129,6 +131,8 @@ footer { padding:26px 5vw; display:flex; justify-content:space-between; border-t
 }
 @media(max-width:500px) {
   header,main,footer { padding-left:20px; padding-right:20px; }
+  .brand { gap:8px; font-size:13px; }
+  .brand img { width:31px; height:49px; }
   .workspace { grid-template-columns:1fr; }
   .step { display:none; }
   .step:first-child { display:flex; }

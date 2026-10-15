@@ -60,21 +60,21 @@ The complete desktop v1 remains in development.
   paired with older monochrome evidence. Existing runs must be analysed and captured
   again before producing the new report layout.
 - Repository review found no verified tunnel alignment, depth, protection envelope,
-  plot or access dataset. The AI evidence now states that absence explicitly. Until an
-  authoritative constraint package is added, the prompt and server validator reject
-  shifting, setting back, widening or rotating a mass and limit suggestions to tests
-  that stay within the current footprint. Older advice is omitted by the new
-  `site-constraints-v1` policy rather than continuing to show unsafe relocation text.
+  plot or access dataset. The AI evidence states that absence explicitly. Exploratory
+  shifting, setting back, widening and rotation are allowed for design iteration, but
+  the prompt and report require later verification against authoritative constraints
+  and prohibit claims of site or tunnel clearance. Older advice is omitted by the
+  `site-constraints-v2` policy.
 - Real `massa fase 2.3dm` acceptance passed with meter interpretation. The four 768 x
   512 captures show three distinct coloured masses without marker labels or analysis-
   mesh obstruction. Baseline Rhino numerical acceptance and stable volume-colour
-  checks pass; app regression is **127 tests**, analyzer regression is **25 tests**,
+  checks pass; app regression is **129 tests**, analyzer regression is **25 tests**,
   Edge/WebGL capture passes without JavaScript exceptions, and desktop Release builds
   with zero warnings/errors.
 - Rebuilt and silently installed tester acceptance passes, including the installed
   payload smoke test. Unsigned artifact:
-  `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, **65,376,804 bytes**, SHA-256
-  **f9539ce7c682b4bf7dd02c41d3cffa4037b1db64f1d82848a15cb9114177805a**.
+  `artifacts/ParkHaven-Setup-v0.1.0-win-x64.exe`, **65,397,358 bytes**, SHA-256
+  **b765ac0045acd9c77c59cb9132baa7639bedf615b76cb52864e19cb673e317d7**.
 - Final A4 PDF acceptance used the real `massa fase 2` colour captures and produced
   a two-page report with the Volume A/B/C legend, no point labels, and the explicit
   unavailable tunnel/plot/access limitation. The advice text remained within the

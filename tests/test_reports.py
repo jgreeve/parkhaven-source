@@ -33,7 +33,7 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
     advice = {
         "samenvatting": "The sight_pct result defines the main visibility constraint.", "model": "vision-model",
         "visual_evidence_used": False, "model_view_evidence_used": True, "output_language": "en",
-        "advice_policy_version": "site-constraints-v1",
+        "advice_policy_version": "site-constraints-v2",
         "evidence_provenance": provenance,
         "design_elements": [
             {"element_id": "volume-a", "label": "Volume A", "object_id": "source:one"},
@@ -73,6 +73,7 @@ def test_report_renders_only_current_evidence_grounded_advice(tmp_path):
     assert "Foundation screening" in report and "42" in report and "86.0%" in report
     assert "Not a ground investigation, foundation design, structural verification, or construction design" in report
     assert "No verified plot, access, tunnel, or other infrastructure envelope is available" in report
+    assert "exploratory test and requires site verification" in report
     assert "Analysis from 2 October 2026, 00:00 · Completed" in report
     assert "Images are shown for human review but were not sent to AI" in report
     assert "run-1" not in report and "sight_pct" not in report
