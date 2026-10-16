@@ -118,7 +118,7 @@ node --check .\app\static\app.js
 node --check .\app\static\viewer.js
 ```
 
-The current verified baseline is 89 passing Python tests with one known Starlette
+The current verified baseline is 129 passing Python tests with one known Starlette
 TestClient deprecation warning.
 
 ## 6. Create the initial source commit
@@ -257,9 +257,11 @@ artifacts where appropriate.
 
 ## 11. Publish releases safely
 
-The application is not yet ready for a user release. It still depends on the sibling
-analyser model/GHX and Three.js assets, a Python environment, Rhino 8, the Rhino
-plug-in and WebView2. Complete the installer/licensing work before inviting users.
+An unsigned internal tester installer now bundles Python, the backend, the Rhino
+plug-in and the analyzer assets, so it no longer needs a local Python environment.
+It is still not a user release: signing, clean-machine acceptance and third-party
+distribution terms (site imagery, weather data, Inno Setup licensing) remain open.
+Complete that work before inviting user-tier recipients.
 
 When a reviewed installer exists:
 

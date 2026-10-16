@@ -34,10 +34,12 @@ Separate organization-owned private repository: `parkhaven-distribution`.
 
 ## Important boundary
 
-The current application is not yet a standalone user installer. It still depends on
-the sibling analyser model/GHX and Three.js assets, a Python environment, Rhino 8,
-the Rhino plug-in and WebView2. Do not invite user-tier recipients until a reviewed,
-licensed and clean-machine-tested installer exists.
+An unsigned internal tester installer now exists and bundles Python, the backend,
+the Rhino plug-in and the required analyzer assets, so testers no longer need a local
+Python environment. It is still not a signed consumer release: distribution terms
+(site imagery, weather data and Inno Setup licensing) and clean-machine acceptance
+are unresolved. Do not invite user-tier recipients until a reviewed, licensed and
+clean-machine-tested installer exists.
 
 Review both team memberships periodically and remove access immediately when it is
 no longer required. Repository privacy is access control, not DRM: authorized users

@@ -43,7 +43,8 @@ Both root `FileName` and `PlugIn\FileName` are set. The root value is needed for
 Rhino's first-use registration. `LoadMode=1` loads the plug-in at startup. No
 administrator rights are required. Registration points to the build directory;
 rerun it if the application is moved. Close app-owned Rhino sessions before
-rebuilding their loaded plug-in. A packaged installer remains a later task.
+rebuilding their loaded plug-in. An unsigned tester installer now registers this
+plug-in automatically; signed release packaging remains a later task.
 
 ## Startup and manual fallback
 

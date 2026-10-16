@@ -71,7 +71,9 @@ Development overrides:
 
 The former `PARKHAVEN_APP_URL` setting is superseded by owned random-port startup.
 `start_app.cmd` remains an explicit, unauthenticated browser-development server on
-port 8765. Installer/bundled-Python packaging is a later milestone.
+port 8765. An unsigned bundled-Python tester installer now exists
+(`packaging/build_tester.ps1`); signed release distribution and clean-machine
+acceptance are still pending.
 
 ## Verified native acceptance
 

@@ -12,9 +12,10 @@ This development build supports this workflow:
 6. Request Dutch advice from an OpenAI-compatible API.
 7. Open a printable report and save it as PDF.
 
-The current placement interface uses numeric X/Y/Z and rotation fields. The
-interactive 3D placement gizmo, generated greenery, heat-resilience comparison
-and AI image generation are not implemented yet.
+The current placement interface uses numeric X/Y/Z and rotation fields plus a
+constrained XY/Z viewer gizmo with origin/design-center reference. Generated
+greenery, heat-resilience comparison and AI image generation are not implemented
+yet.
 
 ## Requirements
 
@@ -31,7 +32,21 @@ The imported design must contain at least one valid closed Brep or closed
 extrusion. Open surfaces, curves, annotations and meshes may remain visible in
 Rhino but are not accepted as BVO massing in the current runner.
 
-## First-time setup
+## Using an installed tester build
+
+If you received `ParkHaven-Setup-v0.1.0-win-x64.exe` from the project owner, you do
+not need Python or .NET:
+
+1. Verify the installer checksum you were given. The build is unsigned, so Windows
+   SmartScreen may warn; this is expected for the tester build.
+2. Close Rhino and ParkHaven if they are open, then run the installer. It installs
+   per-user under `%LOCALAPPDATA%\Programs\ParkHaven Studio` and registers the Rhino
+   plug-in. No administrator rights are required.
+3. Start **ParkHaven Studio** from the Start menu and go to
+   [Test the user workflow](#test-the-user-workflow). The **First-time setup** and
+   **Start the application** sections below are only for source developers.
+
+## First-time setup (source developers)
 
 From `ParkHaven_App_v0.1`, run:
 
@@ -39,10 +54,11 @@ From `ParkHaven_App_v0.1`, run:
 setup_windows.cmd
 ```
 
-This creates `.venv` and installs FastAPI, Uvicorn and test dependencies.
-Build/register the Rhino plug-in using `docs/RHINO_PLUGIN.md` before analysis.
+This creates `.venv` and installs FastAPI, Uvicorn and test dependencies. It does
+not build the desktop executable. Build/register the Rhino plug-in using
+`docs/RHINO_PLUGIN.md` before analysis.
 
-## Start the application
+## Start the application (source developers)
 
 After building the desktop shell (see `desktop/README.md`), run:
 
