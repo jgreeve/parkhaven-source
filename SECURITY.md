@@ -1,8 +1,8 @@
 # Security policy
 
-This is a private project. Report suspected vulnerabilities privately to a
-repository administrator; do not open a public issue or disclose project files,
-models, credentials, endpoints, logs, or screenshots.
+Report suspected vulnerabilities privately to a repository administrator; do not open
+a public issue or disclose project files, models, credentials, endpoints, logs, or
+screenshots.
 
 Never commit API keys, session tokens, private keys, user project workspaces,
 generated model evidence, deployment-specific endpoints, or local trust profiles.

@@ -34,10 +34,10 @@ Rhino but are not accepted as BVO massing in the current runner.
 
 ## Using an installed tester build
 
-If you received `ParkHaven-Setup-v0.1.0-win-x64.exe` from the project owner, you do
-not need Python or .NET:
+If you download `ParkHaven-Setup-v0.1.0-win-x64.exe` from the repository Releases
+page, you do not need Python or .NET:
 
-1. Verify the installer checksum you were given. The build is unsigned, so Windows
+1. Verify the published installer checksum. The build is unsigned, so Windows
    SmartScreen may warn; this is expected for the tester build.
 2. Close Rhino and ParkHaven if they are open, then run the installer. It installs
    per-user under `%LOCALAPPDATA%\Programs\ParkHaven Studio` and registers the Rhino

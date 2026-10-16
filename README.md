@@ -1,8 +1,9 @@
 # ParkHaven Studio (v0.1)
 
-> **Confidential proprietary project.** Keep this source repository private. See
-> [`docs/PRIVATE_GITHUB_ACCESS.md`](docs/PRIVATE_GITHUB_ACCESS.md) for the access
-> model and [`LICENSE`](LICENSE) for the terms of use.
+> **Proprietary, source-available project.** This source is published for evaluation
+> only. All rights are reserved; see [`LICENSE`](LICENSE). It is **not** open source,
+> and no permission to reuse, modify or redistribute is granted except by written
+> agreement.
 
 ParkHaven Studio is a Windows desktop application for the Parkhaven site. It imports a
 Rhino design, runs the existing Rhino/Grasshopper massing analysis on an isolated copy,
@@ -27,13 +28,10 @@ Pick the path that matches you.
 
 ### Current availability
 
-- An **unsigned internal tester installer exists** but is not yet published as a
-  GitHub Release. There is no one-click download yet.
-- A signed, clean-machine-tested user release does **not** exist yet.
-- Testers currently get a build directly from the project owner.
-
-Until a release is published, the installer is shared privately. Ask the project owner
-for `ParkHaven-Setup-v0.1.0-win-x64.exe` and its SHA-256 checksum.
+- Download the test build from the [**Releases**](../../releases) page:
+  `ParkHaven-Setup-v0.1.0-win-x64.exe` with its SHA-256 checksum.
+- The build is **unsigned** and has not been through clean-machine acceptance.
+- Licensed **Rhino 8** is still required to run an analysis.
 
 ### Requirements (all testers)
 
@@ -51,9 +49,9 @@ You do not need Python or .NET. You need the installer and Rhino 8.
 
 ### 1. Get the build
 
-The current test build is shared directly by the project owner as
-`ParkHaven-Setup-v0.1.0-win-x64.exe`. Verify the checksum you were given before
-installing.
+Download `ParkHaven-Setup-v0.1.0-win-x64.exe` from the
+[**Releases**](../../releases) page and verify the published SHA-256 checksum
+before installing.
 
 > The installer is **unsigned**. Windows SmartScreen may warn about it. This is
 > expected for the current tester build.
