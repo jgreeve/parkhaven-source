@@ -28,7 +28,8 @@ Pick the path that matches you.
 
 ### Current availability
 
-- Download the test build from the [**Releases**](../../releases) page:
+- Download the test build from the
+  [**Releases**](https://github.com/jgreeve/parkhaven-source/releases) page:
   `ParkHaven-Setup-v0.1.0-win-x64.exe` with its SHA-256 checksum.
 - The build is **unsigned** and has not been through clean-machine acceptance.
 - Licensed **Rhino 8** is still required to run an analysis.
@@ -50,8 +51,8 @@ You do not need Python or .NET. You need the installer and Rhino 8.
 ### 1. Get the build
 
 Download `ParkHaven-Setup-v0.1.0-win-x64.exe` from the
-[**Releases**](../../releases) page and verify the published SHA-256 checksum
-before installing.
+[**Releases**](https://github.com/jgreeve/parkhaven-source/releases) page and verify
+the published SHA-256 checksum before installing.
 
 > The installer is **unsigned**. Windows SmartScreen may warn about it. This is
 > expected for the current tester build.
